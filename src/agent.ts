@@ -9,7 +9,7 @@ import { SYSTEM_PROMPT, contextBlock } from "./prompt.ts";
 import { GENERAL_TOPICS, NPI_DOMAINS, type Store } from "./store.ts";
 
 const MAX_STEPS = 4;
-const TIMEOUT_MS = 60_000;
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 export interface AgentDeps {
   store: Store;
@@ -17,6 +17,19 @@ export interface AgentDeps {
   /** Called when the model flags something urgent the keyword rules missed. */
   onEscalate: (caregiver: string, reason: string, quote: string) => Promise<void>;
   now?: () => Date;
+  /** Whole-turn budget across all steps and retries. */
+  timeoutMs?: number;
+  /** Per-step diagnostics (tools called, timing, tokens). */
+  onStep?: (info: StepInfo) => void;
+}
+
+export interface StepInfo {
+  step: number;
+  ms: number;
+  finishReason: string;
+  tools: string[];
+  outputTokens: number | undefined;
+  reasoningChars: number;
 }
 
 export interface AgentResult {
@@ -187,6 +200,8 @@ export async function runAgent(
     .map((turn) => ({ role: turn.role, content: turn.text }));
   messages.push({ role: "user", content: text });
 
+  let stepCount = 0;
+  let stepStarted = Date.now();
   const result = await generateText({
     model: deps.llm.model,
     system: [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), options.note]
@@ -197,7 +212,19 @@ export async function runAgent(
     stopWhen: stepCountIs(MAX_STEPS),
     maxRetries: 1,
     headers: sessionHeaders(caregiver),
-    abortSignal: AbortSignal.timeout(TIMEOUT_MS),
+    abortSignal: AbortSignal.timeout(deps.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+    onStepFinish: (step) => {
+      const at = Date.now();
+      deps.onStep?.({
+        step: ++stepCount,
+        ms: at - stepStarted,
+        finishReason: step.finishReason,
+        tools: step.toolCalls.map((call) => call.toolName),
+        outputTokens: step.usage.outputTokens,
+        reasoningChars: step.reasoningText?.length ?? 0,
+      });
+      stepStarted = at;
+    },
   });
 
   const toolCalls = result.steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));

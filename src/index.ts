@@ -100,6 +100,7 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
         {
           store,
           llm,
+          onStep: (step) => console.log("[lucidity.step]", JSON.stringify(step)),
           onEscalate: async (caregiver, reason, quote) => {
             if (safetyHandled) return; // rules already sent guidance for this turn
             await space.send(AI_ESCALATION_REPLY);
