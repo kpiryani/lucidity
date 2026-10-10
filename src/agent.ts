@@ -200,35 +200,88 @@ export async function runAgent(
     .map((turn) => ({ role: turn.role, content: turn.text }));
   messages.push({ role: "user", content: text });
 
+  const system = [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), options.note]
+    .filter(Boolean)
+    .join("\n\n");
+  const tools = buildTools(deps, caregiver, state);
+  const abortSignal = AbortSignal.timeout(deps.timeoutMs ?? DEFAULT_TIMEOUT_MS);
   let stepCount = 0;
   let stepStarted = Date.now();
-  const result = await generateText({
-    model: deps.llm.model,
-    system: [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), options.note]
-      .filter(Boolean)
-      .join("\n\n"),
-    messages,
-    tools: buildTools(deps, caregiver, state),
-    providerOptions: deps.llm.providerOptions,
-    stopWhen: stepCountIs(MAX_STEPS),
-    maxRetries: 1,
-    headers: sessionHeaders(caregiver),
-    abortSignal: AbortSignal.timeout(deps.timeoutMs ?? DEFAULT_TIMEOUT_MS),
-    onStepFinish: (step) => {
-      const at = Date.now();
-      deps.onStep?.({
-        step: ++stepCount,
-        ms: at - stepStarted,
-        finishReason: step.finishReason,
-        tools: step.toolCalls.map((call) => call.toolName),
-        outputTokens: step.usage.outputTokens,
-        reasoningChars: step.reasoningText?.length ?? 0,
-      });
-      stepStarted = at;
-    },
-  });
 
-  const toolCalls = result.steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
+  const generate = (extraSystem?: string) =>
+    generateText({
+      model: deps.llm.model,
+      system: extraSystem ? `${system}\n\n${extraSystem}` : system,
+      messages,
+      tools,
+      providerOptions: deps.llm.providerOptions,
+      stopWhen: stepCountIs(MAX_STEPS),
+      maxRetries: 1,
+      headers: sessionHeaders(caregiver),
+      abortSignal,
+      onStepFinish: (step) => {
+        const at = Date.now();
+        deps.onStep?.({
+          step: ++stepCount,
+          ms: at - stepStarted,
+          finishReason: step.finishReason,
+          tools: step.toolCalls.map((call) => call.toolName),
+          outputTokens: step.usage.outputTokens,
+          reasoningChars: step.reasoningText?.length ?? 0,
+        });
+        stepStarted = at;
+      },
+    });
+
+  let result = await generate();
+  const allSteps = [...result.steps];
+
+  // Safety net: the reply must never claim a save that didn't happen.
+  if (claimsSave(result.text) && !savedSomething(allSteps)) {
+    deps.onStep?.({ step: ++stepCount, ms: 0, finishReason: "retry:unsaved-claim", tools: [], outputTokens: 0, reasoningChars: 0 });
+    result = await generate(UNSAVED_CLAIM_NOTE);
+    allSteps.push(...result.steps);
+    if (claimsSave(result.text) && !savedSomething(allSteps)) {
+      return { reply: CLARIFY_REPLY, escalated: state.escalated, toolCalls: toolNames(allSteps) };
+    }
+  }
+
   const reply = result.text.trim() || null;
-  return { reply, escalated: state.escalated, toolCalls };
+  return { reply, escalated: state.escalated, toolCalls: toolNames(allSteps) };
 }
+
+const WRITE_TOOLS = new Set([
+  "log_npi_observation",
+  "update_observation",
+  "log_lucidity_episode",
+  "update_lucidity_episode",
+  "log_general",
+]);
+
+// "I've updated that", "I have noted it", "I corrected", "saved that"…
+const SAVE_CLAIM =
+  /\b(i'?ve|i have|i|i'll|i will)\s+(just\s+|also\s+|now\s+)?(noted|saved|logged|recorded|updated|corrected|changed|added|adjusted|fixed)\b/i;
+
+export function claimsSave(text: string): boolean {
+  return SAVE_CLAIM.test(text.replace(/[\u2018\u2019]/g, "'"));
+}
+
+type Steps = Awaited<ReturnType<typeof generateText>>["steps"];
+
+function toolNames(steps: Steps): string[] {
+  return steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
+}
+
+function savedSomething(steps: Steps): boolean {
+  return steps.some((step) =>
+    step.toolResults.some(
+      (r) => WRITE_TOOLS.has(r.toolName) && (r.output as { ok?: boolean } | undefined)?.ok === true,
+    ),
+  );
+}
+
+const UNSAVED_CLAIM_NOTE =
+  "Your previous draft said something was saved or updated, but no record tool was called, so nothing was saved. Redo your reply: if it is clear which record and field the caregiver means, call the right tool now; if it is not clear (e.g. severity vs. distress, or which symptom), ask one short clarifying question and do not claim anything was saved.";
+
+export const CLARIFY_REPLY =
+  "Just so I record this correctly: which detail should I change? For example, how intense it was (1–3), or how much it stressed you (0–5)?";

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { MockLanguageModelV4 } from "ai/test";
-import { runAgent, type AgentDeps } from "./agent.ts";
+import { CLARIFY_REPLY, claimsSave, runAgent, type AgentDeps } from "./agent.ts";
 import { Store } from "./store.ts";
 
 const usage = {
@@ -204,4 +204,59 @@ test("history and recent records are sent to the model", async () => {
   assert.match(serialized, /Hello!/);
   assert.match(serialized, /very anxious/);
   assert.match(serialized, /missing severity, distress/);
+});
+
+test("claimsSave recognizes save claims", () => {
+  assert.ok(claimsSave("Of course — I've updated that to a 3."));
+  assert.ok(claimsSave("Thank you, I’ve noted it."));
+  assert.ok(claimsSave("No worries, I corrected that."));
+  assert.ok(!claimsSave("How intense was it: 1, 2, or 3?"));
+  assert.ok(!claimsSave("That sounds exhausting."));
+});
+
+test("a save claim with no tool call is retried, and the retry's real save is used", async () => {
+  const store = new Store(null);
+  const obs = await store.addObservation({
+    caregiver: "+15550000001",
+    domain: "agitation_aggression",
+    severity: 2,
+    distress: 4,
+    quote: "agitated at dinner",
+    observedPeriod: null,
+  });
+  const d = deps(store, [
+    textStep("Of course — I've updated that to a 3."), // claims a save, no tool
+    toolStep([{ toolName: "update_observation", input: { observation_id: obs.id, severity: 3 } }]),
+    textStep("Updated to a 3."),
+  ]);
+  const result = await runAgent(d, "+15550000001", "actually it was more like a 3");
+
+  assert.equal(obs.severity, 3);
+  assert.equal(result.reply, "Updated to a 3.");
+  const retryCall = (d.llm.model as MockLanguageModelV4).doGenerateCalls[1]!;
+  assert.match(JSON.stringify(retryCall.prompt), /no record tool was called/);
+});
+
+test("a repeated save claim with no tool call becomes a clarifying question", async () => {
+  const store = new Store(null);
+  const result = await runAgent(
+    deps(store, [textStep("I've updated that to a 3."), textStep("Done, I've updated it.")]),
+    "+15550000001",
+    "actually it was more like a 3",
+  );
+  assert.equal(result.reply, CLARIFY_REPLY);
+});
+
+test("a failed update does not count as a save", async () => {
+  const store = new Store(null);
+  const result = await runAgent(
+    deps(store, [
+      toolStep([{ toolName: "update_observation", input: { observation_id: "obs_missing", severity: 3 } }]),
+      textStep("I've updated it."),
+      textStep("I've updated it."),
+    ]),
+    "+15550000001",
+    "make it a 3",
+  );
+  assert.equal(result.reply, CLARIFY_REPLY);
 });
