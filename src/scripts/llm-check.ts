@@ -3,7 +3,7 @@
 
 import { APICallError, generateText, stepCountIs, tool } from "ai";
 import { z } from "zod";
-import { loadLlmConfig } from "../llm.ts";
+import { loadLlmConfig, sessionHeaders } from "../llm.ts";
 
 const llm = loadLlmConfig();
 if (!llm) {
@@ -37,6 +37,7 @@ try {
     },
     stopWhen: stepCountIs(3),
     maxRetries: 0,
+    headers: sessionHeaders("llm-check"),
     abortSignal: AbortSignal.timeout(60_000),
   });
 

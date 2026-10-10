@@ -27,8 +27,12 @@ export function loadLlmConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig |
     baseURL,
     apiKey,
     // OpenCode asks clients to identify themselves rather than send a generic
-    // SDK user agent.
-    headers: { "User-Agent": "lucidity/0.1 (HackNC 2026 prototype)" },
+    // SDK user agent, and rejects requests without a session id. This default
+    // covers one-off calls; per-caregiver calls override it via sessionHeaders.
+    headers: {
+      "User-Agent": "lucidity/0.1 (HackNC 2026 prototype)",
+      ...sessionHeaders("default"),
+    },
   });
   return { model: provider(modelId), modelId, baseURL };
 }
