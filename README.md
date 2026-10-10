@@ -172,7 +172,34 @@ cd lucidity
 npm install
 ```
 
-Create a `.env` file in the project root with your Photon project credentials (ask a teammate for the variable names / values — **never commit this file**).
+Create your `.env` from the template, in the project root (the same folder as `package.json`):
+```bash
+cp .env.example .env
+```
+Then open `.env` and fill in:
+
+| Variable | Value | Required |
+|---|---|---|
+| `PROJECT_ID`, `PROJECT_SECRET` | Photon project credentials (Photon dashboard) | Yes |
+| `LLM_BASE_URL` | `https://opencode.ai/zen/go/v1` (no trailing `/chat/completions`) | For AI |
+| `LLM_API_KEY` | Your OpenCode API key, pasted as-is with no quotes or spaces | For AI |
+| `LLM_MODEL` | `glm-5.3` (exactly; not `opencode-go/glm-5.3`) | For AI |
+| `LLM_REASONING_EFFORT` | Optional. Defaults to `low` (fast replies). `default` uses the model's own setting, which is much slower for GLM-5.3 | No |
+| `CARE_TEAM_PHONE` | E.164 number that receives alert texts, e.g. `+15551234567` | No |
+
+Example (fake key):
+```bash
+LLM_BASE_URL=https://opencode.ai/zen/go/v1
+LLM_API_KEY=sk-oc-xxxxxxxxxxxxxxxxxxxx
+LLM_MODEL=glm-5.3
+```
+If any `LLM_*` value is missing, the bot still runs with Phase 1 behavior (safety rules + "Thanks, I've noted that."). To switch to another OpenAI-compatible model later, change only these three values. **Never commit `.env`.**
+
+### Check the model connection (no iMessage involved)
+```bash
+npm run llm:check
+```
+Sends one test message to the model and confirms it makes a proper tool call. Expect `✓ Tool call OK`.
 
 ### Run
 ```bash
@@ -183,9 +210,18 @@ npm run start
 
 You should see:
 ```
+[lucidity] AI enabled: model "glm-5.3" at https://opencode.ai/zen/go/v1 (reasoning effort: low)
 [spectrum.lifecycle] INFO Spectrum started { ... providers: 'imessage' ... }
 ```
-Then text the project's iMessage number from your phone to test the loop.
+Connecting can take up to ~30 seconds. Once both lines appear, text the project's iMessage number from your phone in plain language. The bot must be running for replies to arrive.
+
+Records are saved to `data/lucidity.json` (gitignored). Delete that file to reset all memory.
+
+### Tests
+```bash
+npm test          # safety rules + agent (uses a mock model; no API calls)
+npm run typecheck
+```
 
 ### Troubleshooting
 | Error | Fix |
@@ -194,6 +230,10 @@ Then text the project's iMessage number from your phone to test the loop.
 | `tsx: not found` | You're in a folder where `npm install` hasn't run (check your path). |
 | `spawn npx ENOENT` | You're on native Windows. Use WSL. |
 | `Password authentication is not supported` on push | Use `gh auth login` or a GitHub personal access token. |
+| `AI disabled (set LLM_BASE_URL, ...)` at startup | One of the `LLM_*` lines is missing or empty in `.env`. |
+| `llm:check` says `API error 401` / `403` | `LLM_API_KEY` is wrong or has extra quotes/spaces. |
+| `llm:check` says `API error 404` | `LLM_BASE_URL` must end in `/v1`, and `LLM_MODEL` must be exactly `glm-5.3`. |
+| `[lucidity.agent] failed` in the log | The model call failed or timed out (90s limit); the caregiver got "Sorry, I'm having trouble replying right now…". `[lucidity.step]` lines show how long each step took. If replies are slow, check `LLM_REASONING_EFFORT` isn't set to `default`. |
 
 ---
 
