@@ -97,7 +97,11 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
     return;
   }
 
-  await space.responding(async () => {
+  // When the rules already replied, the model only records in the background,
+  // so don't show a typing bubble for a reply that will never come.
+  const withTyping = (work: () => Promise<void>) => (safetyHandled ? work() : space.responding(work));
+
+  await withTyping(async () => {
     try {
       const result = await runAgent(
         {
