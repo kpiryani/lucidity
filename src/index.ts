@@ -23,7 +23,7 @@ const app = await Spectrum({
 const CARE_TEAM_PHONE = process.env.CARE_TEAM_PHONE?.trim() || undefined;
 
 // How long to wait for a caregiver to stop typing before replying.
-const BURST_WINDOW_MS = Number(process.env.BURST_WINDOW_MS ?? 5000);
+const BURST_WINDOW_MS = Number(process.env.BURST_WINDOW_MS ?? 10000);
 
 const store = new Store(process.env.LUCIDITY_DATA_FILE?.trim() || "data/lucidity.json");
 await store.load();
