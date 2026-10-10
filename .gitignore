@@ -225,3 +225,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Lucidity local records (synthetic caregiver data)
+/data/
