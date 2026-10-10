@@ -4,8 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-     "start": "tsx --env-file=.env src/index.ts",
-     "dev": "tsx watch --env-file=.env src/index.ts"
+    "start": "tsx --env-file=.env src/index.ts",
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "test": "tsx --test src/*.test.ts",
+    "typecheck": "tsc"
   },
   "dependencies": {
     "spectrum-ts": "^12.10.1"
