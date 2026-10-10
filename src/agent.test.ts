@@ -35,6 +35,8 @@ function deps(store: Store, steps: unknown[], escalations: string[] = []): Agent
       model: new MockLanguageModelV4({ doGenerate: steps as never }),
       modelId: "mock",
       baseURL: "mock://",
+      providerOptions: {},
+      reasoningEffort: null,
     },
     onEscalate: async (_caregiver, reason) => {
       escalations.push(reason);

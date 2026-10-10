@@ -32,9 +32,12 @@ await store.load();
 const llm = loadLlmConfig();
 console.log(
   llm
-    ? `[lucidity] AI enabled: model "${llm.modelId}" at ${llm.baseURL}`
+    ? `[lucidity] AI enabled: model "${llm.modelId}" at ${llm.baseURL} (reasoning effort: ${llm.reasoningEffort ?? "default"})`
     : "[lucidity] AI disabled (set LLM_BASE_URL, LLM_API_KEY, LLM_MODEL in .env). Using Phase 1 replies.",
 );
+
+const AI_FAILURE_REPLY =
+  "Sorry, I'm having trouble replying right now. Your message is saved, and you can keep texting. If anything is urgent, call 911 or your doctor.";
 
 const STOP_WORDS = /^(stop|stopall|unsubscribe|cancel|end|quit)$/i;
 const START_WORDS = /^(start|unstop|resume)$/i;
@@ -130,8 +133,9 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
       else if (!safetyHandled && !result.escalated) await message.react("👍");
       await recordTurn(reply);
     } catch (err) {
-      console.error("[lucidity.agent] failed; falling back to Phase 1 reply", { from, err });
-      if (!safetyHandled) await acknowledge(space, message);
+      console.error("[lucidity.agent] failed", { from, err });
+      // Don't claim anything was recorded; only the message itself was saved.
+      if (!safetyHandled) await space.send(AI_FAILURE_REPLY);
       await recordTurn(null);
     }
   });

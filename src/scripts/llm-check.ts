@@ -14,6 +14,7 @@ if (!llm) {
 
 console.log(`Model:    ${llm.modelId}`);
 console.log(`Endpoint: ${llm.baseURL}`);
+console.log(`Effort:   ${llm.reasoningEffort ?? "provider default"}`);
 
 let calledWith: unknown = null;
 const started = Date.now();
@@ -36,6 +37,7 @@ try {
       }),
     },
     stopWhen: stepCountIs(3),
+    providerOptions: llm.providerOptions,
     maxRetries: 0,
     headers: sessionHeaders("llm-check"),
     abortSignal: AbortSignal.timeout(60_000),

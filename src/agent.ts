@@ -9,7 +9,7 @@ import { SYSTEM_PROMPT, contextBlock } from "./prompt.ts";
 import { GENERAL_TOPICS, NPI_DOMAINS, type Store } from "./store.ts";
 
 const MAX_STEPS = 4;
-const DEFAULT_TIMEOUT_MS = 60_000;
+const DEFAULT_TIMEOUT_MS = 90_000;
 
 export interface AgentDeps {
   store: Store;
@@ -209,6 +209,7 @@ export async function runAgent(
       .join("\n\n"),
     messages,
     tools: buildTools(deps, caregiver, state),
+    providerOptions: deps.llm.providerOptions,
     stopWhen: stepCountIs(MAX_STEPS),
     maxRetries: 1,
     headers: sessionHeaders(caregiver),

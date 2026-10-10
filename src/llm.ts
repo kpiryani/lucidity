@@ -4,16 +4,24 @@
 //   LLM_BASE_URL=https://opencode.ai/zen/go/v1
 //   LLM_API_KEY=<your key>
 //   LLM_MODEL=glm-5.3
+//   LLM_REASONING_EFFORT=low   (optional; default "low", "default" sends nothing)
 
 import { createHash } from "node:crypto";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModel } from "ai";
+import type { LanguageModel, generateText } from "ai";
+
+type ProviderOptions = NonNullable<Parameters<typeof generateText>[0]["providerOptions"]>;
 
 export interface LlmConfig {
   model: LanguageModel;
   modelId: string;
   baseURL: string;
+  /** Per-request provider options (e.g. reasoning effort); pass to every call. */
+  providerOptions: ProviderOptions;
+  reasoningEffort: string | null;
 }
+
+const PROVIDER_NAME = "lucidity-llm";
 
 /** Returns null (AI disabled) unless all three LLM_* variables are set. */
 export function loadLlmConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig | null {
@@ -23,7 +31,7 @@ export function loadLlmConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig |
   if (!baseURL || !apiKey || !modelId) return null;
 
   const provider = createOpenAICompatible({
-    name: "lucidity-llm",
+    name: PROVIDER_NAME,
     baseURL,
     apiKey,
     // OpenCode asks clients to identify themselves rather than send a generic
@@ -34,7 +42,14 @@ export function loadLlmConfig(env: NodeJS.ProcessEnv = process.env): LlmConfig |
       ...sessionHeaders("default"),
     },
   });
-  return { model: provider(modelId), modelId, baseURL };
+
+  // GLM's default reasoning is long and highly variable (7s to 60s+ per step
+  // in testing); "low" answered the same caregiver message in ~2s.
+  const effort = env.LLM_REASONING_EFFORT?.trim() || "low";
+  const reasoningEffort = effort === "default" ? null : effort;
+  const providerOptions: ProviderOptions = reasoningEffort ? { lucidityLlm: { reasoningEffort } } : {};
+
+  return { model: provider(modelId), modelId, baseURL, providerOptions, reasoningEffort };
 }
 
 /**
