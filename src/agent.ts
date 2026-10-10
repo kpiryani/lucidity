@@ -1,8 +1,17 @@
 // The Intelligence step: one caregiver turn → LLM with structured tools → reply.
 // Tools write to the Store; inputs are validated by zod before anything is saved.
 // Invalid tool inputs are returned to the model as errors so it can retry.
+//
+// Code-level guards (instructions alone weren't enough with GLM in testing):
+// - The first step must call a tool (a record tool or no_record_needed), so the
+//   model explicitly decides whether a message contains something to save.
+// - Quotes must be the caregiver's real words; updates must be stated in the
+//   caregiver's latest message, so earlier ambiguous answers can't be
+//   "resolved" silently.
+// - "Skip" can decline follow-ups on at most one record per turn.
+// - A reply may not claim a save that didn't happen.
 
-import { generateText, stepCountIs, tool, type ModelMessage } from "ai";
+import { ToolChoiceViolationError, generateText, stepCountIs, tool, type ModelMessage } from "ai";
 import { z } from "zod";
 import { sessionHeaders, type LlmConfig } from "./llm.ts";
 import { SYSTEM_PROMPT, contextBlock } from "./prompt.ts";
@@ -14,8 +23,11 @@ const DEFAULT_TIMEOUT_MS = 90_000;
 export interface AgentDeps {
   store: Store;
   llm: LlmConfig;
-  /** Called when the model flags something urgent the keyword rules missed. */
-  onEscalate: (caregiver: string, reason: string, quote: string) => Promise<void>;
+  /**
+   * Called when the model flags something urgent the keyword rules missed.
+   * Resolves to whether a person on the care team was actually notified.
+   */
+  onEscalate: (caregiver: string, reason: string, quote: string) => Promise<boolean>;
   now?: () => Date;
   /** Whole-turn budget across all steps and retries. */
   timeoutMs?: number;
@@ -39,16 +51,77 @@ export interface AgentResult {
   toolCalls: string[];
 }
 
-const quote = z.string().min(1).describe("The caregiver's exact words this record is based on.");
+const quote = z
+  .string()
+  .min(1)
+  .describe("The caregiver's exact words this record is based on, copied from their messages.");
+const caregiverSaid = z
+  .string()
+  .min(1)
+  .describe("The caregiver's exact words in their LATEST message that state this change (e.g. \"it was a 2\", \"skip\").");
 const observedPeriod = z
   .string()
   .nullish()
   .describe('Time period the caregiver described, e.g. "last night", "this week". null if not said.');
 const nullableText = (description: string) => z.string().nullish().describe(`${description} null if not said.`);
 
-function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: boolean }) {
+interface TurnState {
+  escalated: boolean;
+  careTeamNotified: boolean;
+  declinedThisTurn: boolean;
+  /** The caregiver's latest message (this turn). */
+  latest: string;
+  /** Recent caregiver messages, including the latest. */
+  recentCaregiverText: string[];
+}
+
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02bc]/g, "'")
+    .replace(/[^a-z0-9' ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** True when `words` appears (ignoring case/punctuation) in one of `texts`. */
+export function saidIn(words: string, texts: string[]): boolean {
+  const needle = normalize(words);
+  return needle.length > 0 && texts.some((t) => normalize(t).includes(needle));
+}
+
+const notFromCaregiver = (q: string) => ({
+  ok: false,
+  error: `Not saved: "${q}" isn't in the caregiver's messages. Use their exact words as the quote.`,
+});
+const notInLatest = (q: string) => ({
+  ok: false,
+  error: `Not saved: "${q}" isn't in the caregiver's latest message. Only update a record when their latest message clearly says so; if it's unclear, ask instead.`,
+});
+const alreadyDeclined = {
+  ok: false,
+  error: "Not saved: only mark the one record whose question the caregiver just skipped.",
+};
+
+function buildTools(deps: AgentDeps, caregiver: string, state: TurnState) {
   const { store } = deps;
+  const fromCaregiver = (q: string) => saidIn(q, state.recentCaregiverText);
+  const inLatest = (q: string) => saidIn(q, [state.latest]);
+  const claimDecline = (declined: boolean | null | undefined) => {
+    if (!declined) return true;
+    if (state.declinedThisTurn) return false;
+    state.declinedThisTurn = true;
+    return true;
+  };
+
   return {
+    no_record_needed: tool({
+      description:
+        "Call this ONLY when the latest message has nothing new to record: greetings, thanks, small talk, or a question to you. Anything about the person's behavior, mood, activities, abilities, health, routines, or the caregiver's own wellbeing must be recorded with another tool instead.",
+      inputSchema: z.object({ reason: z.string().min(1) }),
+      execute: async () => ({ ok: true }),
+    }),
+
     log_npi_observation: tool({
       description: "Record a behavioral/psychological symptom the caregiver reported (one NPI-Q domain).",
       inputSchema: z.object({
@@ -65,6 +138,7 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
         observed_period: observedPeriod,
       }),
       execute: async (input) => {
+        if (!fromCaregiver(input.quote)) return notFromCaregiver(input.quote);
         const record = await store.addObservation({
           caregiver,
           domain: input.domain,
@@ -79,15 +153,18 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
 
     update_observation: tool({
       description:
-        "Fill in or correct severity/distress/period on an existing observation, or mark that the caregiver declined the follow-up. Omit fields that aren't changing.",
+        "Fill in or correct severity/distress/period on an existing observation, or mark that the caregiver skipped ITS follow-up question. Only when the caregiver's latest message says so. Omit fields that aren't changing.",
       inputSchema: z.object({
         observation_id: z.string(),
+        caregiver_said: caregiverSaid,
         severity: z.number().int().min(1).max(3).nullish(),
         distress: z.number().int().min(0).max(5).nullish(),
         observed_period: z.string().nullish(),
         followup_declined: z.boolean().nullish(),
       }),
       execute: async (input) => {
+        if (!inLatest(input.caregiver_said)) return notInLatest(input.caregiver_said);
+        if (!claimDecline(input.followup_declined)) return alreadyDeclined;
         const record = await store.updateObservation(caregiver, input.observation_id, {
           severity: (input.severity ?? undefined) as 1 | 2 | 3 | undefined,
           distress: (input.distress ?? undefined) as 0 | 1 | 2 | 3 | 4 | 5 | undefined,
@@ -109,6 +186,7 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
         after_state: nullableText("How they were afterward."),
       }),
       execute: async (input) => {
+        if (!fromCaregiver(input.quote)) return notFromCaregiver(input.quote);
         const record = await store.addLucidityEpisode({
           caregiver,
           quote: input.quote,
@@ -124,9 +202,10 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
 
     update_lucidity_episode: tool({
       description:
-        "Add or correct details on an existing lucidity episode, or mark that the caregiver declined follow-ups. Omit fields that aren't changing.",
+        "Add or correct details on an existing lucidity episode, or mark that the caregiver skipped ITS follow-up question. Only when the caregiver's latest message says so. Omit fields that aren't changing.",
       inputSchema: z.object({
         episode_id: z.string(),
+        caregiver_said: caregiverSaid,
         duration: z.string().nullish(),
         context: z.string().nullish(),
         what_was_said_or_done: z.string().nullish(),
@@ -135,6 +214,8 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
         followup_declined: z.boolean().nullish(),
       }),
       execute: async (input) => {
+        if (!inLatest(input.caregiver_said)) return notInLatest(input.caregiver_said);
+        if (!claimDecline(input.followup_declined)) return alreadyDeclined;
         const record = await store.updateLucidityEpisode(caregiver, input.episode_id, {
           duration: input.duration ?? undefined,
           context: input.context ?? undefined,
@@ -149,7 +230,7 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
 
     log_general: tool({
       description:
-        "Record other useful context: hobbies/activities (enjoyment vs ability), daily tasks, caregiver wellbeing, medical context, positive moments.",
+        "Record other useful context: each hobby/activity (whether they still enjoy it vs. still can do it, and any reason given), daily tasks and abilities, caregiver wellbeing, medical context, positive moments. One note per activity.",
       inputSchema: z.object({
         topic: z.enum(GENERAL_TOPICS),
         summary: z.string().min(1).describe("One plain sentence describing only what was reported."),
@@ -157,6 +238,7 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
         observed_period: observedPeriod,
       }),
       execute: async (input) => {
+        if (!fromCaregiver(input.quote)) return notFromCaregiver(input.quote);
         const record = await store.addNote({
           caregiver,
           topic: input.topic,
@@ -170,7 +252,7 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
 
     escalate_urgent: tool({
       description:
-        "Flag a possible emergency or something needing a doctor soon. Lucidity sends pre-approved safety guidance and alerts the care team.",
+        "Flag a possible emergency or something needing a doctor soon. Lucidity sends pre-approved safety guidance itself and saves an alert for the care team.",
       inputSchema: z.object({
         reason: z.string().min(1).describe("Short reason, e.g. 'possible fall with injury'."),
         quote,
@@ -178,9 +260,15 @@ function buildTools(deps: AgentDeps, caregiver: string, state: { escalated: bool
       execute: async (input) => {
         if (!state.escalated) {
           state.escalated = true;
-          await deps.onEscalate(caregiver, input.reason, input.quote);
+          state.careTeamNotified = await deps.onEscalate(caregiver, input.reason, input.quote);
         }
-        return { ok: true, note: "Safety guidance is being sent by Lucidity. Keep your reply short and supportive." };
+        return {
+          ok: true,
+          care_team_notified: state.careTeamNotified,
+          note: state.careTeamNotified
+            ? "Safety guidance was sent and a care-team member was notified. Keep your reply short and supportive."
+            : "Safety guidance was sent. NO ONE was notified in real time; the alert is only saved for later review. Do not say the care team was alerted or is aware. Keep your reply short and supportive.",
+        };
       },
     }),
   };
@@ -193,11 +281,16 @@ export async function runAgent(
   options: { note?: string } = {},
 ): Promise<AgentResult> {
   const now = deps.now?.() ?? new Date();
-  const state = { escalated: false };
+  const history = deps.store.recentHistory(caregiver);
+  const state: TurnState = {
+    escalated: false,
+    careTeamNotified: false,
+    declinedThisTurn: false,
+    latest: text,
+    recentCaregiverText: [...history.filter((t) => t.role === "user").map((t) => t.text).slice(-6), text],
+  };
 
-  const messages: ModelMessage[] = deps.store
-    .recentHistory(caregiver)
-    .map((turn) => ({ role: turn.role, content: turn.text }));
+  const messages: ModelMessage[] = history.map((turn) => ({ role: turn.role, content: turn.text }));
   messages.push({ role: "user", content: text });
 
   const system = [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), options.note]
@@ -208,7 +301,7 @@ export async function runAgent(
   let stepCount = 0;
   let stepStarted = Date.now();
 
-  const generate = (extraSystem?: string) =>
+  const generateOnce = (extraSystem: string | undefined, requireTool: boolean) =>
     generateText({
       model: deps.llm.model,
       system: extraSystem ? `${system}\n\n${extraSystem}` : system,
@@ -216,6 +309,8 @@ export async function runAgent(
       tools,
       providerOptions: deps.llm.providerOptions,
       stopWhen: stepCountIs(MAX_STEPS),
+      // Step 1 must call a tool (a record tool or no_record_needed).
+      prepareStep: ({ stepNumber }) => (requireTool && stepNumber === 0 ? { toolChoice: "required" as const } : {}),
       maxRetries: 1,
       headers: sessionHeaders(caregiver),
       abortSignal,
@@ -232,6 +327,18 @@ export async function runAgent(
         stepStarted = at;
       },
     });
+
+  // If the model ignores the required tool call, retry once without forcing it
+  // rather than failing the whole turn.
+  const generate = async (extraSystem?: string) => {
+    try {
+      return await generateOnce(extraSystem, true);
+    } catch (err) {
+      if (!ToolChoiceViolationError.isInstance(err)) throw err;
+      deps.onStep?.({ step: ++stepCount, ms: 0, finishReason: "retry:no-tool-call", tools: [], outputTokens: 0, reasoningChars: 0 });
+      return generateOnce(extraSystem, false);
+    }
+  };
 
   let result = await generate();
   const allSteps = [...result.steps];

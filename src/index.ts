@@ -109,7 +109,7 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
           llm,
           onStep: (step) => console.log("[lucidity.step]", JSON.stringify(step)),
           onEscalate: async (caregiver, reason, quote) => {
-            if (safetyHandled) return; // rules already sent guidance for this turn
+            if (safetyHandled) return false; // rules already sent guidance for this turn
             await space.send(AI_ESCALATION_REPLY);
             const notified = await alertCareTeam({
               caregiver,
@@ -119,6 +119,7 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
               text: quote,
             });
             if (notified) await space.send("I've also alerted your care team.");
+            return notified;
           },
         },
         from,

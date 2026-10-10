@@ -21,6 +21,8 @@ const toolStep = (calls: Array<{ toolName: string; input: unknown }>) => ({
   warnings: [],
 });
 
+const noRecord = () => toolStep([{ toolName: "no_record_needed", input: { reason: "small talk" } }]);
+
 const textStep = (text: string) => ({
   content: [{ type: "text" as const, text }],
   finishReason: { unified: "stop" as const, raw: "stop" },
@@ -40,6 +42,7 @@ function deps(store: Store, steps: unknown[], escalations: string[] = []): Agent
     },
     onEscalate: async (_caregiver, reason) => {
       escalations.push(reason);
+      return false;
     },
   };
 }
@@ -84,7 +87,12 @@ test("follow-up answer updates the record and keeps a revision", async () => {
 
   await runAgent(
     deps(store, [
-      toolStep([{ toolName: "update_observation", input: { observation_id: obs.id, severity: 2, distress: 4 } }]),
+      toolStep([
+        {
+          toolName: "update_observation",
+          input: { observation_id: obs.id, caregiver_said: "2, and like a 4", severity: 2, distress: 4 },
+        },
+      ]),
       textStep("Got it, thank you."),
     ]),
     "+15550000001",
@@ -109,7 +117,9 @@ test("a caregiver cannot update another caregiver's record", async () => {
 
   await runAgent(
     deps(store, [
-      toolStep([{ toolName: "update_observation", input: { observation_id: obs.id, severity: 3 } }]),
+      toolStep([
+        { toolName: "update_observation", input: { observation_id: obs.id, caregiver_said: "it was a 3", severity: 3 } },
+      ]),
       textStep("Okay."),
     ]),
     "+15550000002",
@@ -196,7 +206,7 @@ test("history and recent records are sent to the model", async () => {
     quote: "very anxious",
     observedPeriod: null,
   });
-  const d = deps(store, [textStep("ok")]);
+  const d = deps(store, [noRecord(), textStep("ok")]);
   await runAgent(d, "+15550000001", "thanks");
 
   const call = (d.llm.model as MockLanguageModelV4).doGenerateCalls[0]!;
@@ -225,22 +235,28 @@ test("a save claim with no tool call is retried, and the retry's real save is us
     observedPeriod: null,
   });
   const d = deps(store, [
-    textStep("Of course — I've updated that to a 3."), // claims a save, no tool
-    toolStep([{ toolName: "update_observation", input: { observation_id: obs.id, severity: 3 } }]),
+    noRecord(),
+    textStep("Of course — I've updated that to a 3."), // claims a save, no record tool
+    toolStep([
+      {
+        toolName: "update_observation",
+        input: { observation_id: obs.id, caregiver_said: "more like a 3", severity: 3 },
+      },
+    ]),
     textStep("Updated to a 3."),
   ]);
   const result = await runAgent(d, "+15550000001", "actually it was more like a 3");
 
   assert.equal(obs.severity, 3);
   assert.equal(result.reply, "Updated to a 3.");
-  const retryCall = (d.llm.model as MockLanguageModelV4).doGenerateCalls[1]!;
+  const retryCall = (d.llm.model as MockLanguageModelV4).doGenerateCalls[2]!;
   assert.match(JSON.stringify(retryCall.prompt), /no record tool was called/);
 });
 
 test("a repeated save claim with no tool call becomes a clarifying question", async () => {
   const store = new Store(null);
   const result = await runAgent(
-    deps(store, [textStep("I've updated that to a 3."), textStep("Done, I've updated it.")]),
+    deps(store, [noRecord(), textStep("I've updated that to a 3."), noRecord(), textStep("Done, I've updated it.")]),
     "+15550000001",
     "actually it was more like a 3",
   );
@@ -251,12 +267,143 @@ test("a failed update does not count as a save", async () => {
   const store = new Store(null);
   const result = await runAgent(
     deps(store, [
-      toolStep([{ toolName: "update_observation", input: { observation_id: "obs_missing", severity: 3 } }]),
+      toolStep([
+        {
+          toolName: "update_observation",
+          input: { observation_id: "obs_missing", caregiver_said: "make it a 3", severity: 3 },
+        },
+      ]),
       textStep("I've updated it."),
+      noRecord(),
       textStep("I've updated it."),
     ]),
     "+15550000001",
     "make it a 3",
   );
   assert.equal(result.reply, CLARIFY_REPLY);
+});
+
+const agitation = (store: Store, severity: 1 | 2 | 3 | null = 2) =>
+  store.addObservation({
+    caregiver: "+15550000001",
+    domain: "agitation_aggression",
+    severity,
+    distress: null,
+    quote: "agitated at dinner",
+    observedPeriod: null,
+  });
+
+test("an update not stated in the latest message is rejected (no silent changes)", async () => {
+  const store = new Store(null);
+  const obs = await agitation(store);
+  await runAgent(
+    deps(store, [
+      toolStep([
+        {
+          toolName: "update_observation",
+          input: { observation_id: obs.id, caregiver_said: "it was more like a 3", severity: 3 },
+        },
+      ]),
+      textStep("What happened?"),
+    ]),
+    "+15550000001",
+    "Something amazing happened today",
+  );
+  assert.equal(obs.severity, 2);
+  assert.equal(obs.revisions.length, 0);
+});
+
+test("skip declines at most one record per turn", async () => {
+  const store = new Store(null);
+  const obs = await agitation(store, null);
+  const episode = await store.addLucidityEpisode({
+    caregiver: "+15550000001",
+    quote: "she said my name",
+    observedPeriod: "today",
+    duration: null,
+    context: null,
+    whatWasSaidOrDone: "said my name",
+    afterState: null,
+  });
+  await runAgent(
+    deps(store, [
+      toolStep([
+        {
+          toolName: "update_lucidity_episode",
+          input: { episode_id: episode.id, caregiver_said: "skip", followup_declined: true },
+        },
+        {
+          toolName: "update_observation",
+          input: { observation_id: obs.id, caregiver_said: "skip", followup_declined: true },
+        },
+      ]),
+      textStep("No problem."),
+    ]),
+    "+15550000001",
+    "Skip",
+  );
+  assert.equal(episode.followupDeclined, true);
+  assert.equal(obs.followupDeclined, false);
+});
+
+test("a quote that isn't the caregiver's words is not saved", async () => {
+  const store = new Store(null);
+  await runAgent(
+    deps(store, [
+      toolStep([
+        {
+          toolName: "log_general",
+          input: { topic: "activity_or_hobby", summary: "Enjoys chess.", quote: "he is a chess grandmaster" },
+        },
+      ]),
+      textStep("Nice."),
+    ]),
+    "+15550000001",
+    "he still loves gardening tho",
+  );
+  assert.equal(store.snapshot().notes.length, 0);
+});
+
+test("hobbies are saved as one note per activity with the caregiver's words", async () => {
+  const store = new Store(null);
+  await runAgent(
+    deps(store, [
+      toolStep([
+        {
+          toolName: "log_general",
+          input: {
+            topic: "activity_or_hobby",
+            summary: "Still enjoys gardening (enjoyment; ability not mentioned).",
+            quote: "He still loves gardening tho",
+          },
+        },
+      ]),
+      textStep("That's lovely."),
+    ]),
+    "+15550000001",
+    "He still loves gardening tho",
+  );
+  const [note] = store.snapshot().notes;
+  assert.equal(note?.topic, "activity_or_hobby");
+});
+
+test("the model is told when no one on the care team was notified", async () => {
+  const store = new Store(null);
+  const d = deps(store, [
+    toolStep([{ toolName: "escalate_urgent", input: { reason: "very drowsy", quote: "hard to keep her awake" } }]),
+    textStep("I'm here with you."),
+  ]);
+  await runAgent(d, "+15550000001", "she's coughing and it's hard to keep her awake today");
+  const second = (d.llm.model as MockLanguageModelV4).doGenerateCalls[1]!;
+  assert.match(JSON.stringify(second.prompt), /NO ONE was notified/);
+});
+
+test("the first step requires a tool call, and a skipped tool call falls back instead of failing", async () => {
+  const store = new Store(null);
+  const d = deps(store, [textStep("hi!"), textStep("Hi there!")]);
+  const result = await runAgent(d, "+15550000001", "hi");
+  const calls = (d.llm.model as MockLanguageModelV4).doGenerateCalls;
+  assert.equal(calls[0]!.toolChoice?.type, "required");
+  assert.notEqual(calls[1]!.toolChoice?.type, "required");
+  assert.equal(result.reply, "Hi there!");
 });
