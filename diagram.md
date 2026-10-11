@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart LR
-    A["📱 Caregiver<br/>texts about Dad"] --> B["💬 CONNECT<br/>Lucidity listens<br/>and saves it"]
+    A["📱 Caregiver<br/>texts about the patient"] --> B["💬 CONNECT<br/>Lucidity listens<br/>and saves it"]
     B --> C["🧠 INTELLIGENCE<br/>turns texts into<br/>a one-page report"]
     C --> D["👩‍⚕️ CARE<br/>the doctor reads it<br/>and approves advice"]
     D --> E["💬 CONNECT<br/>sends the advice<br/>back to the caregiver"]
