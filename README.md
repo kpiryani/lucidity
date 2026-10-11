@@ -23,7 +23,7 @@ Caregiver texts ──▶ CONNECT ──▶ INTELLIGENCE ──▶ CARE ──�
 | | What works | Docs |
 |---|---|---|
 | **Safety** | Every text checked by fixed rules before any AI; fixed 911 / doctor / 988 guidance; AI can flag what rules miss (still fixed wording); clinician alerted | `src/triage.ts` |
-| **Conversation** | Caregivers text naturally; the AI (GLM-5.3) saves observations with their exact words, asks one follow-up at a time, captures lucid moments; code guardrails stop it from claiming saves it didn't make or changing records unasked | [Phase 2](docs/phase-2-test-scenarios.md) |
+| **Conversation** | A warm two-message welcome the first time; caregivers text naturally; the AI (GLM-5.3) saves observations with their exact words, asks one follow-up at a time, captures lucid moments; code guardrails stop it from claiming saves it didn't make or changing records unasked | [Phase 2](docs/phase-2-test-scenarios.md) |
 | **Clinical check-ins** | When patterns appear, Lucidity offers the **NPI-Q** (behavior) or **Zarit Burden Interview** items 1–12 (caregiver strain), hands off to word-for-word questions, understands casual answers, scores **in code** | [Phase 3](docs/phase-3-questionnaire.md) |
 | **Reminders** | "Remind me to give Dad his meds at 8pm" → texted at 8pm; daily/weekly; recurring check-in reminders after a first check-in | [Phase 4](docs/phase-4-reminders.md) |
 | **Care loop** | Clinician texts "how is he doing?" → one-page profile (Sept vs Oct changes, caregiver's words, suggested questions); "tell them: …" → Lucidity drafts caregiver-friendly wording → clinician approves → delivered; reply forwarded back | [Phase 5](docs/phase-5-close-the-loop.md) |

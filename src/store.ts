@@ -195,6 +195,8 @@ export interface CaregiverState {
   awaitingCareReplyFor?: string;
   /** Last time the clinician was nudged about new updates. */
   lastClinicianNudgeAt?: string;
+  /** When the first-time welcome was sent. */
+  welcomedAt?: string;
 }
 
 interface Data {

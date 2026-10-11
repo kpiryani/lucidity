@@ -3,6 +3,7 @@ import { imessage } from "@spectrum-ts/imessage";
 import { runAgent } from "./agent.ts";
 import { captureCareReply, handleClinicianMessage, nudgeClinician, type CareDeps } from "./care.ts";
 import { draftCareMessage } from "./drafting.ts";
+import { WELCOME_MESSAGES, isGreetingOnly } from "./welcome.ts";
 import { Debouncer } from "./debounce.ts";
 import { interpretWithLlm } from "./answers.ts";
 import type { Wordings } from "./instruments/index.ts";
@@ -387,6 +388,17 @@ for await (const [space, message] of app.messages) {
     if (store.caregiver(from).optedOut) {
       if (!result) await space.send("You're currently unsubscribed. Text START if you'd like to talk with Lucidity again.");
       continue;
+    }
+
+    // First-time welcome (fixed, warm). Emergencies come first; the welcome
+    // waits for a calmer message.
+    const caregiverState = store.caregiver(from);
+    if (!result && !caregiverState.welcomedAt && caregiverState.history.length === 0) {
+      caregiverState.welcomedAt = new Date().toISOString();
+      await sendAll(space, WELCOME_MESSAGES);
+      await store.appendTurn(from, "user", text);
+      for (const m of WELCOME_MESSAGES) await store.appendTurn(from, "assistant", m);
+      if (isGreetingOnly(text)) continue;
     }
 
     // Check-in answers are handled immediately by code, not batched for the AI.
