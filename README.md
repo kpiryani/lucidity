@@ -185,6 +185,7 @@ Then open `.env` and fill in:
 | `LLM_API_KEY` | Your OpenCode API key, pasted as-is with no quotes or spaces | For AI |
 | `LLM_MODEL` | `glm-5.3` (exactly; not `opencode-go/glm-5.3`) | For AI |
 | `LLM_REASONING_EFFORT` | Optional. Defaults to `low` (fast replies). `default` uses the model's own setting, which is much slower for GLM-5.3 | No |
+| `LUCIDITY_TIMEZONE` | Optional. Time zone for reminders, e.g. `America/Chicago`. Defaults to `America/New_York` | No |
 | `CARE_TEAM_PHONE` | E.164 number that receives alert texts, e.g. `+15551234567` | No |
 
 Example (fake key):

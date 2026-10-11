@@ -17,6 +17,7 @@ import { sessionHeaders, type LlmConfig } from "./llm.ts";
 import { SYSTEM_PROMPT, contextBlock } from "./prompt.ts";
 import type { Wordings } from "./instruments/index.ts";
 import { assessmentContext, cuedInstrument, recordOffer } from "./questionnaire.ts";
+import { DEFAULT_TIMEZONE, describeReminder, localNowLabel, resolveDue } from "./reminders.ts";
 import { GENERAL_TOPICS, NPI_DOMAINS, type Store } from "./store.ts";
 
 const MAX_STEPS = 4;
@@ -37,6 +38,8 @@ export interface AgentDeps {
   onStep?: (info: StepInfo) => void;
   /** Installed questionnaire wording; check-ins can only be offered for these. */
   wordings?: Wordings;
+  /** Time zone for reminders when the caregiver hasn't set one. */
+  defaultTimeZone?: string;
 }
 
 export interface StepInfo {
@@ -94,6 +97,9 @@ export function saidIn(words: string, texts: string[]): boolean {
   return needle.length > 0 && texts.some((t) => normalize(t).includes(needle));
 }
 
+/** Words that justify a repeating reminder ("every day", "daily", "each night"…). */
+const REPEAT_WORDS = /\b(every|everyday|daily|each|nightly|weekly|mornings|evenings|nights|weekdays|weekends|always|repeat|recurring|routine)\b/i;
+
 const notFromCaregiver = (q: string) => ({
   ok: false,
   error: `Not saved: "${q}" isn't in the caregiver's messages. Use their exact words as the quote.`,
@@ -133,6 +139,54 @@ function buildTools(deps: AgentDeps, caregiver: string, state: TurnState) {
         return result.ok
           ? { ok: true, note: "Offer recorded. In your reply, briefly invite them (12 short questions, about 5 minutes, shared with the care team) and end with 'Reply YES or NO.'" }
           : { ok: false, error: `Don't offer it. ${result.reason}` };
+      },
+    }),
+
+    set_reminder: tool({
+      description:
+        "Schedule a reminder text for the caregiver at a specific local time (e.g. meds, meals, appointments). Use the caregiver's local date/time from the Reminders context. If the time is vague (\"tonight\", \"after lunch\"), ask for an exact time instead of guessing.",
+      inputSchema: z.object({
+        what: z.string().min(1).describe('What to remind them about, short and in their words, e.g. "give Dad his meds".'),
+        time: z.string().describe("Local 24-hour time, e.g. 20:00 for 8pm."),
+        date: z.string().nullish().describe("Local date YYYY-MM-DD if they named a day; null means the next time that clock time comes around."),
+        repeat: z.enum(["none", "daily", "weekly"]).describe('"daily" for every day, "weekly" for the same weekday each week.'),
+        caregiver_said: caregiverSaid,
+      }),
+      execute: async (input) => {
+        if (!inLatest(input.caregiver_said)) return notInLatest(input.caregiver_said);
+        if (input.repeat !== "none" && !REPEAT_WORDS.test(state.latest)) {
+          return {
+            ok: false,
+            error: "Not saved: the caregiver didn't say it repeats. Use repeat \"none\", or ask if they want it every day.",
+          };
+        }
+        const timeZone = store.caregiver(caregiver).timeZone ?? deps.defaultTimeZone ?? DEFAULT_TIMEZONE;
+        const due = resolveDue(input.time, input.date ?? null, timeZone, deps.now?.() ?? new Date());
+        if (!due.ok) return { ok: false, error: due.error };
+        const reminder = await store.addReminder({
+          caregiver,
+          what: input.what.trim(),
+          dueAt: due.dueAt.toISOString(),
+          timeZone,
+          repeat: input.repeat,
+          quote: input.caregiver_said,
+        });
+        return {
+          ok: true,
+          id: reminder.id,
+          scheduled: describeReminder(reminder),
+          note: "Confirm it back using exactly the scheduled time above, so the caregiver can catch mistakes.",
+        };
+      },
+    }),
+
+    cancel_reminder: tool({
+      description: "Cancel one of the caregiver's scheduled reminders (ids are listed in the Reminders context).",
+      inputSchema: z.object({ reminder_id: z.string(), caregiver_said: caregiverSaid }),
+      execute: async (input) => {
+        if (!inLatest(input.caregiver_said)) return notInLatest(input.caregiver_said);
+        const r = await store.cancelReminder(caregiver, input.reminder_id);
+        return r ? { ok: true, cancelled: describeReminder(r) } : { ok: false, error: "No such scheduled reminder." };
       },
     }),
 
@@ -318,7 +372,16 @@ export async function runAgent(
   const checkIns = hasCheckIns
     ? `# Check-ins\n${assessmentContext(deps.store, caregiver, deps.store.caregiver(caregiver), now, deps.wordings!)}`
     : "# Check-ins\n- Not available; don't offer one.";
-  const system = [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), checkIns, options.note]
+  const timeZone = deps.store.caregiver(caregiver).timeZone ?? deps.defaultTimeZone ?? DEFAULT_TIMEZONE;
+  const scheduled = deps.store.activeReminders(caregiver);
+  const reminders = [
+    "# Reminders",
+    `Caregiver's local time: ${localNowLabel(now, timeZone)} (${timeZone})`,
+    scheduled.length
+      ? `Scheduled reminders:\n${scheduled.map((r) => `- ${r.id}: ${describeReminder(r)}`).join("\n")}`
+      : "Scheduled reminders: none.",
+  ].join("\n");
+  const system = [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), checkIns, reminders, options.note]
     .filter(Boolean)
     .join("\n\n");
   const tools = buildTools(deps, caregiver, state);
@@ -378,6 +441,16 @@ export async function runAgent(
     }
   }
 
+  // Safety net: never promise a reminder that wasn't actually scheduled.
+  if (claimsReminder(result.text) && !succeeded(allSteps, "set_reminder")) {
+    deps.onStep?.({ step: ++stepCount, ms: 0, finishReason: "retry:unscheduled-reminder", tools: [], outputTokens: 0, reasoningChars: 0 });
+    result = await generate(UNSCHEDULED_REMINDER_NOTE);
+    allSteps.push(...result.steps);
+    if (claimsReminder(result.text) && !succeeded(allSteps, "set_reminder")) {
+      return { reply: REMINDER_CLARIFY_REPLY, escalated: state.escalated, toolCalls: toolNames(allSteps) };
+    }
+  }
+
   const reply = result.text.trim() || null;
 
   // Safety net: the model sometimes invites a check-in without calling
@@ -414,6 +487,8 @@ export function guessPatientLabel(texts: string[]): string | null {
 }
 
 const WRITE_TOOLS = new Set([
+  "set_reminder",
+  "cancel_reminder",
   "log_npi_observation",
   "update_observation",
   "log_lucidity_episode",
@@ -423,7 +498,7 @@ const WRITE_TOOLS = new Set([
 
 // "I've updated that", "I have noted it", "I corrected", "saved that"…
 const SAVE_CLAIM =
-  /\b(i'?ve|i have|i|i'll|i will)\s+(just\s+|also\s+|now\s+)?(noted|saved|logged|recorded|updated|corrected|changed|added|adjusted|fixed)\b/i;
+  /\b(i'?ve|i have|i|i'll|i will)\s+(just\s+|also\s+|now\s+)?(noted|saved|logged|recorded|updated|corrected|changed|added|adjusted|fixed|set|scheduled|cancelled|canceled)\b/i;
 
 export function claimsSave(text: string): boolean {
   return SAVE_CLAIM.test(text.replace(/[\u2018\u2019]/g, "'"));
@@ -434,6 +509,23 @@ type Steps = Awaited<ReturnType<typeof generateText>>["steps"];
 function toolNames(steps: Steps): string[] {
   return steps.flatMap((step) => step.toolCalls.map((call) => call.toolName));
 }
+
+/** "I'll remind you…", "you'll get a reminder…", "reminder is set" */
+export function claimsReminder(text: string): boolean {
+  const t = text.replace(/[\u2018\u2019]/g, "'");
+  return /\b(i'll|i will|i'm going to|i am going to)\s+(text|remind|ping|message|nudge)\s+you\b|\byou'll get a (reminder|text)\b|\breminder (is|has been) (set|scheduled)\b/i.test(t);
+}
+
+function succeeded(steps: Steps, toolName: string): boolean {
+  return steps.some((step) =>
+    step.toolResults.some((r) => r.toolName === toolName && (r.output as { ok?: boolean } | undefined)?.ok === true),
+  );
+}
+
+const UNSCHEDULED_REMINDER_NOTE =
+  "Your previous draft promised a reminder, but set_reminder wasn't called successfully, so nothing is scheduled. Redo your reply: if the caregiver gave a clear time, call set_reminder now and confirm the returned time; if the time is unclear, ask for an exact time and do not promise anything.";
+
+export const REMINDER_CLARIFY_REPLY = "I want to get this reminder right. What exact time should I send it?";
 
 function savedSomething(steps: Steps): boolean {
   return steps.some((step) =>

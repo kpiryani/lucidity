@@ -19,6 +19,7 @@ import {
   type QuestionnaireDeps,
 } from "./questionnaire.ts";
 import { Store, type Alert } from "./store.ts";
+import { DEFAULT_TIMEZONE, isValidTimeZone, startReminderLoop } from "./reminders.ts";
 import { AI_ESCALATION_REPLY, triage, triageReply } from "./triage.ts";
 // Spectrum bridges a single agent loop to many messaging interfaces.
 // Each provider in `providers` adds an interface (terminal TUI, iMessage, …).
@@ -53,6 +54,33 @@ console.log(
 
 const AI_FAILURE_REPLY =
   "Sorry, I'm having trouble replying right now. Your message is saved, and you can keep texting. If anything is urgent, call 911 or your doctor.";
+
+// Reminders are sent in this time zone unless a caregiver has their own.
+const envTimeZone = process.env.LUCIDITY_TIMEZONE?.trim();
+const TIMEZONE = envTimeZone && isValidTimeZone(envTimeZone) ? envTimeZone : DEFAULT_TIMEZONE;
+if (envTimeZone && TIMEZONE !== envTimeZone) console.warn(`[lucidity] Unknown LUCIDITY_TIMEZONE "${envTimeZone}"; using ${TIMEZONE}.`);
+
+// Latest conversation per caregiver, reused for reminders (falls back to
+// opening the DM through Spectrum, e.g. after a restart).
+const spaces = new Map<string, Space>();
+
+async function sendTo(caregiver: string, text: string): Promise<void> {
+  let space = spaces.get(caregiver);
+  if (!space) {
+    const im = imessage(app);
+    space = await im.space.create(await im.user(caregiver));
+    spaces.set(caregiver, space);
+  }
+  await space.send(text);
+}
+
+const stopReminders = startReminderLoop({
+  store,
+  send: sendTo,
+  log: (message, data) => console.log(message, data === undefined ? "" : JSON.stringify(data)),
+});
+console.log(`[lucidity] Reminders running (time zone: ${TIMEZONE}).`);
+process.once("beforeExit", stopReminders);
 
 // Verbatim questionnaire wording lives in git-ignored local files.
 const wordings: Wordings = { "NPI-Q": await loadNpiqWording(), ZBI: await loadZbiWording() };
@@ -180,9 +208,11 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
           store,
           llm,
           wordings,
+          defaultTimeZone: TIMEZONE,
           onStep: (step) => console.log("[lucidity.step]", JSON.stringify(step)),
           onEscalate: async (caregiver, reason, quote) => {
             if (safetyHandled) return false; // rules already sent guidance for this turn
+            store.caregiver(caregiver).lastEmergencyAt = new Date().toISOString();
             await space.send(AI_ESCALATION_REPLY);
             const notified = await alertCareTeam({
               caregiver,
@@ -236,6 +266,7 @@ for await (const [space, message] of app.messages) {
 
   const from = message.sender?.id ?? "unknown";
   const text = message.content.text;
+  spaces.set(from, space);
 
   try {
     // Safety triage runs first, on every message, with no batching delay and
@@ -254,8 +285,11 @@ for await (const [space, message] of app.messages) {
         text,
       });
       if (notified) await space.send("I've also alerted your care team.");
-      // An emergency interrupts any check-in; offers are dropped.
+      // An emergency interrupts any check-in, drops offers, and holds
+      // routine reminders for a while (LUCIDITY_CONNECT_EMERGENCIES EM6).
       store.caregiver(from).pendingOffer = undefined;
+      store.caregiver(from).lastEmergencyAt = new Date().toISOString();
+      await store.commit();
       if (await pause(store, from)) {
         await space.send("I've paused your check-in. Reply RESUME whenever you're ready.");
       }
@@ -267,13 +301,16 @@ for await (const [space, message] of app.messages) {
       store.caregiver(from).pendingOffer = undefined;
       await store.setOptedOut(from, true);
       await space.send(
-        "You're unsubscribed and won't get check-ins from Lucidity. Text START anytime to come back. In an emergency, call 911.",
+        "You're unsubscribed and won't get reminders or check-ins from Lucidity. Text START anytime to come back. In an emergency, call 911.",
       );
       continue;
     }
     if (START_WORDS.test(text.trim())) {
       await store.setOptedOut(from, false);
-      await space.send("Welcome back. Tell me anything you've noticed, whenever it's convenient.");
+      const held = store.activeReminders(from).length;
+      await space.send(
+        `Welcome back. Tell me anything you've noticed, whenever it's convenient.${held ? " Your reminders are back on." : ""}`,
+      );
       continue;
     }
     if (store.caregiver(from).optedOut) {
