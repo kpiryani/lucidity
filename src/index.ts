@@ -1,6 +1,7 @@
 import { Spectrum, type Message, type Space } from "spectrum-ts";
 import { imessage } from "@spectrum-ts/imessage";
 import { runAgent } from "./agent.ts";
+import { captureCareReply, handleClinicianMessage, nudgeClinician, type CareDeps } from "./care.ts";
 import { Debouncer } from "./debounce.ts";
 import { interpretWithLlm } from "./answers.ts";
 import type { Wordings } from "./instruments/index.ts";
@@ -39,6 +40,12 @@ const app = await Spectrum({
 // shared lines it must be registered as a project user in the Photon
 // dashboard, or proactive sends fail with "Target not allowed".
 const CARE_TEAM_PHONE = process.env.CARE_TEAM_PHONE?.trim() || undefined;
+
+// The clinician's phone (Lucidity Care, "Simulated clinician" in the demo).
+// Messages from this number are clinician commands, never caregiver messages.
+const CLINICIAN_PHONE = process.env.CLINICIAN_PHONE?.trim() || undefined;
+// Safety alerts go to the care-team phone, else the clinician.
+const ALERT_PHONE = CARE_TEAM_PHONE ?? CLINICIAN_PHONE;
 
 // How long to wait for a caregiver to stop typing before replying.
 const BURST_WINDOW_MS = Number(process.env.BURST_WINDOW_MS ?? 10000);
@@ -105,6 +112,24 @@ const stopReminders = startReminderLoop({
 console.log(`[lucidity] Reminders running (time zone: ${TIMEZONE}).`);
 process.once("beforeExit", stopReminders);
 
+const careDeps: CareDeps | null = CLINICIAN_PHONE
+  ? {
+      store,
+      clinician: CLINICIAN_PHONE,
+      send: sendTo,
+      // One patient per caregiver; the clinician works with the most recently
+      // active caregiver (or DEMO_CAREGIVER_PHONE if set).
+      currentCaregiver: () =>
+        process.env.DEMO_CAREGIVER_PHONE?.trim() ||
+        store.caregiversByActivity().find((c) => c.address !== CLINICIAN_PHONE)?.address,
+    }
+  : null;
+console.log(
+  careDeps
+    ? "[lucidity] Care enabled: clinician commands from CLINICIAN_PHONE."
+    : "[lucidity] Care disabled (set CLINICIAN_PHONE in .env).",
+);
+
 async function sendAll(space: Space, messages: string[]): Promise<void> {
   for (const m of messages) await space.send(m);
 }
@@ -118,8 +143,12 @@ async function routeQuestionnaire(space: Space, from: string, text: string): Pro
   if (!q) return false;
   const state = store.caregiver(from);
 
-  if (inProgress(store, from)) {
+  const active = inProgress(store, from);
+  if (active) {
     await space.responding(async () => sendAll(space, await handleQuestionnaireReply(q, from, text)));
+    if (active.completedAt && careDeps) {
+      await nudgeClinician(careDeps, from, `${active.instrument} check-in completed (${active.status})`, true);
+    }
     return true;
   }
   if (paused(store, from) && isResume(text)) {
@@ -160,12 +189,14 @@ async function alertCareTeam(input: Omit<Alert, "id" | "at">): Promise<boolean> 
   const alert = await store.addAlert(input);
   console.warn("[lucidity.alert]", JSON.stringify(alert));
 
-  if (!CARE_TEAM_PHONE) return false;
+  if (!ALERT_PHONE) return false;
   try {
-    const im = imessage(app);
-    const space = await im.space.create(await im.user(CARE_TEAM_PHONE));
-    await space.send(
-      `Lucidity ${input.level.toUpperCase()} alert (${input.reasons.join(", ")}) from caregiver ${input.caregiver}:\n\n"${input.text}"`,
+    const state = store.caregiver(input.caregiver);
+    const name = state.patientName ?? state.patientLabel ?? "a patient";
+    const at = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: TIMEZONE });
+    await sendTo(
+      ALERT_PHONE,
+      `⚠ Lucidity ${input.level.toUpperCase()} alert for ${name} (${input.source === "rules" ? "fixed safety rules" : "AI flag"}: ${input.reasons.join(", ")}).\nCaregiver wrote: "${input.text}"\nFixed safety guidance was sent to the caregiver at ${at}.`,
     );
     return true;
   } catch (err) {
@@ -185,6 +216,7 @@ interface Inbound {
   message: Message;
   text: string;
   safetyReply: string | null; // set when the rules already answered this text
+  careNote?: string; // set when this text replies to a care-team message
 }
 
 // One turn at a time per caregiver, so a slow model call can't interleave.
@@ -196,6 +228,7 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
   const text = items.map((i) => i.text).join("\n");
   const safetyReplies = items.flatMap((i) => (i.safetyReply ? [i.safetyReply] : []));
   const safetyHandled = safetyReplies.length > 0;
+  const careNotes = items.flatMap((i) => (i.careNote ? [i.careNote] : []));
 
   const recordTurn = async (assistantText: string | null) => {
     await store.appendTurn(from, "user", text);
@@ -240,12 +273,21 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
         from,
         text,
         {
-          note: safetyHandled
-            ? "Lucidity already sent this caregiver fixed safety guidance for this message. Still record what they reported, but do not repeat safety instructions; your reply will not be sent."
-            : undefined,
+          note:
+            [
+              safetyHandled
+                ? "Lucidity already sent this caregiver fixed safety guidance for this message. Still record what they reported, but do not repeat safety instructions; your reply will not be sent."
+                : "",
+              ...careNotes,
+            ]
+              .filter(Boolean)
+              .join("\n\n") || undefined,
         },
       );
       console.log("[lucidity.agent]", JSON.stringify({ from, tools: result.toolCalls, escalated: result.escalated }));
+      if (careDeps && result.toolCalls.includes("log_npi_observation")) {
+        await nudgeClinician(careDeps, from, "the caregiver reported a behavior change");
+      }
 
       // When the rules already replied, the model only records; its text is dropped.
       const reply = safetyHandled ? null : result.reply;
@@ -279,6 +321,16 @@ for await (const [space, message] of app.messages) {
   const from = message.sender?.id ?? "unknown";
   const text = message.content.text;
   spaces.set(from, space);
+
+  // Clinician commands (Lucidity Care) never go through caregiver handling.
+  if (careDeps && from === CLINICIAN_PHONE) {
+    try {
+      await sendAll(space, await handleClinicianMessage(careDeps, text));
+    } catch (err) {
+      console.error("[lucidity.care] failed to handle clinician message", err);
+    }
+    continue;
+  }
 
   try {
     // Safety triage runs first, on every message, with no batching delay and
@@ -333,7 +385,18 @@ for await (const [space, message] of app.messages) {
     // Check-in answers are handled immediately by code, not batched for the AI.
     if (!result && (await routeQuestionnaire(space, from, text))) continue;
 
-    batcher.push(from, { space, message, text, safetyReply });
+    // A reply to a care-team question or recommendation is saved and forwarded.
+    let careNote: string | undefined;
+    if (!result && careDeps) {
+      const reply = await captureCareReply(careDeps, from, text);
+      if (reply?.handled) {
+        await sendAll(space, reply.toCaregiver);
+        continue;
+      }
+      careNote = reply?.aiNote;
+    }
+
+    batcher.push(from, { space, message, text, safetyReply, careNote });
   } catch (err) {
     console.error("[lucidity] failed to handle message", { from, err });
   }
