@@ -1,0 +1,72 @@
+{
+  "instrument": "NPI-Q",
+  "version": "Final Version 6/99",
+  "source": "Copy the wording from your licensed NPI-Q PDF into data/instruments/npiq.local.json (git-ignored). Never commit the real wording to this public repo.",
+  "notice": "NPI-Q developed by Daniel Kaufer, MD. \u00a9 JL Cummings, 1994; all rights reserved.",
+  "instructions": "<instructions text from the PDF>",
+  "severityPrompt": "<severity prompt from the PDF>",
+  "severityOptions": {
+    "1": "<option text>",
+    "2": "<option text>",
+    "3": "<option text>"
+  },
+  "distressPrompt": "<distress prompt from the PDF>",
+  "distressOptions": {
+    "0": "<option text>",
+    "1": "<option text>",
+    "2": "<option text>",
+    "3": "<option text>",
+    "4": "<option text>",
+    "5": "<option text>"
+  },
+  "items": {
+    "NPIQ-01": {
+      "label": "Delusions",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-02": {
+      "label": "Hallucinations",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-03": {
+      "label": "Agitation/Aggression",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-04": {
+      "label": "Depression/Dysphoria",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-05": {
+      "label": "Anxiety",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-06": {
+      "label": "Elation/Euphoria",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-07": {
+      "label": "Apathy/Indifference",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-08": {
+      "label": "Disinhibition",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-09": {
+      "label": "Irritability/Lability",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-10": {
+      "label": "Motor Disturbance",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-11": {
+      "label": "Nighttime Behaviors",
+      "question": "<question text from the PDF>"
+    },
+    "NPIQ-12": {
+      "label": "Appetite/Eating",
+      "question": "<question text from the PDF>"
+    }
+  }
+}

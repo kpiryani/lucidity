@@ -10,6 +10,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
+import type { NpiqPart, NpiqResponse, NpiqScores } from "./instruments/npiq.ts";
 
 export const NPI_DOMAINS = [
   "delusions",
@@ -92,10 +93,50 @@ export interface Alert {
   at: string;
 }
 
+export type InstrumentCode = "NPI-Q";
+
+/** One administration of a standardized questionnaire (assessment). */
+export interface Assessment {
+  id: string;
+  kind: "assessment";
+  instrument: InstrumentCode;
+  instrumentVersion: string;
+  administrationMode: "imessage_verbatim";
+  recallPeriod: "past month";
+  respondent: string; // caregiver address
+  respondentRole: "caregiver";
+  patientLabel: string; // e.g. "Dad", as the caregiver refers to them
+  status: "in_progress" | "paused" | "completed" | "incomplete";
+  startedAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  responses: NpiqResponse[];
+  /** Where the questionnaire is up to. */
+  cursor: { itemIndex: number; part: NpiqPart };
+  /** Unclear replies to the current prompt so far. */
+  retries: number;
+  scores: NpiqScores | null;
+  source: "caregiver_imessage";
+}
+
 export interface CaregiverState {
   address: string;
   optedOut: boolean;
   history: ChatTurn[];
+  /** How the caregiver refers to the patient ("Dad"); one patient per caregiver. */
+  patientLabel?: string;
+  /** Whether the caregiver wants to see questionnaire results (asked once). */
+  scoreConsent?: boolean;
+  /** Assessment whose results we asked consent to show; answer pending. */
+  awaitingScoreConsentFor?: string;
+  /** Questionnaire the AI offered; waiting for YES/NO. */
+  pendingOffer?: { instrument: InstrumentCode; patientLabel: string; offeredAt: string };
+  /** Last time a check-in was offered (at most one offer a day). */
+  lastOfferedAt?: string;
+  /** Last time each questionnaire offer was declined. */
+  declinedOffers?: Partial<Record<InstrumentCode, string>>;
+  /** In-progress or paused assessment id. */
+  activeAssessmentId?: string;
 }
 
 interface Data {
@@ -104,6 +145,7 @@ interface Data {
   lucidityEpisodes: LucidityEpisode[];
   notes: GeneralNote[];
   alerts: Alert[];
+  assessments: Assessment[];
 }
 
 const HISTORY_LIMIT = 40;
@@ -114,6 +156,7 @@ const emptyData = (): Data => ({
   lucidityEpisodes: [],
   notes: [],
   alerts: [],
+  assessments: [],
 });
 
 const now = () => new Date().toISOString();
@@ -145,6 +188,28 @@ export class Store {
       await rename(`${path}.tmp`, path);
     });
     return this.writing;
+  }
+
+  /** Persist after mutating objects returned by this store. */
+  commit(): Promise<void> {
+    return this.save();
+  }
+
+  async addAssessment(assessment: Assessment): Promise<Assessment> {
+    this.data.assessments.push(assessment);
+    await this.save();
+    return assessment;
+  }
+
+  assessment(id: string | undefined): Assessment | undefined {
+    return id ? this.data.assessments.find((a) => a.id === id) : undefined;
+  }
+
+  /** Most recent completed/incomplete assessment of an instrument for this caregiver. */
+  latestAssessment(caregiver: string, instrument: InstrumentCode): Assessment | undefined {
+    return this.data.assessments
+      .filter((a) => a.respondent === caregiver && a.instrument === instrument && a.completedAt)
+      .sort((a, b) => (a.completedAt! < b.completedAt! ? 1 : -1))[0];
   }
 
   caregiver(address: string): CaregiverState {
