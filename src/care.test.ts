@@ -4,6 +4,7 @@ import { CLINICIAN_HELP, captureCareReply, handleClinicianMessage, nudgeClinicia
 import { NPIQ_ITEMS, scoreNpiq } from "./instruments/npiq.ts";
 import type { ItemResponse } from "./instruments/types.ts";
 import { ZBI_ITEM_IDS, scoreZbi } from "./instruments/zbi.ts";
+import { acceptDraft } from "./drafting.ts";
 import { compileProfile, compareNpiq, suggestedQuestions, zbiItemsRose } from "./profile.ts";
 import { Store, type Assessment, type NpiDomain } from "./store.ts";
 
@@ -234,4 +235,61 @@ test("a natural flow: tell them, change it, send it", async () => {
   assert.match(edited[0]!, /Say "send it" to approve/);
   await handleClinicianMessage(deps, "looks good");
   assert.equal(sent[0]!.text, "From Dad's care team: Dim the lights after dinner tonight. Want to try it? Reply YES, or skip.");
+});
+
+// --- Intelligence drafting (clinician note -> caregiver wording) ---------------
+
+test("Lucidity drafts the wording; the clinician sees both and approves the draft", async () => {
+  const store = await jonathan();
+  const { deps, sent } = care(store);
+  const inputs: unknown[] = [];
+  deps.draft = async (input) => {
+    inputs.push(input);
+    return "That sounds like a hard evening. One small change may help: dim the lights and lower the noise tonight. Want to try it? Reply YES, or skip.";
+  };
+  const draft = await handleClinicianMessage(deps, "tell them: create a calm environment, remove environmental triggers");
+  assert.match(draft[0]!, /worded by Lucidity from your note/);
+  assert.match(draft[0]!, /Your note: "create a calm environment, remove environmental triggers"/);
+  assert.match((inputs[0] as { recentQuote?: string }).recentQuote ?? "", /so anxious tonight/);
+  await handleClinicianMessage(deps, "send it");
+  assert.equal(sent[0]!.text, "From Dad's care team: That sounds like a hard evening. One small change may help: dim the lights and lower the noise tonight. Want to try it? Reply YES, or skip.");
+  const m = store.careMessagesFor(CG).at(-1)!;
+  assert.equal(m.draftedBy, "lucidity");
+  assert.equal(m.clinicianNote, "create a calm environment, remove environmental triggers");
+});
+
+test('"use my words" sends the clinician note as written', async () => {
+  const store = await jonathan();
+  const { deps, sent } = care(store);
+  deps.draft = async () => "Some drafted wording? ";
+  await handleClinicianMessage(deps, "ask them: does it start after dinner?");
+  await handleClinicianMessage(deps, "use my words");
+  await handleClinicianMessage(deps, "send it");
+  assert.match(sent[0]!.text, /Question from Dad's care team: Does it start after dinner\?/);
+});
+
+test("if drafting fails, the clinician's words are used; numbered questions aren't redrafted", async () => {
+  const store = await jonathan();
+  const { deps } = care(store);
+  let calls = 0;
+  deps.draft = async () => {
+    calls++;
+    return null;
+  };
+  const draft = await handleClinicianMessage(deps, "tell them: dim the lights tonight");
+  assert.match(draft[0]!, /From Dad's care team: Dim the lights tonight/);
+  assert.doesNotMatch(draft[0]!, /worded by Lucidity/);
+  await handleClinicianMessage(deps, "ask 1");
+  assert.equal(calls, 1);
+});
+
+test("drafts are checked: right ending, length, no new medication language", () => {
+  const rec = { type: "recommendation" as const, note: "dim the lights", patientLabel: "Dad" };
+  assert.equal(acceptDraft('"Try dimming the lights tonight. Want to try it? Reply YES, or skip."', rec), "Try dimming the lights tonight. Want to try it? Reply YES, or skip.");
+  assert.equal(acceptDraft("Try dimming the lights tonight.", rec), null);
+  assert.equal(acceptDraft("Give him his medication early. Want to try it? Reply YES, or skip.", rec), null);
+  assert.equal(acceptDraft("x".repeat(400) + " Reply YES, or skip.", rec), null);
+  const q = { type: "question" as const, note: "when does it start", patientLabel: "Dad" };
+  assert.equal(acceptDraft("Does it usually start in the evening?", q), "Does it usually start in the evening?");
+  assert.equal(acceptDraft("Tell me when it starts.", q), null);
 });

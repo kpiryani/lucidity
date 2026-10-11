@@ -11,6 +11,7 @@
 // Approved messages are delivered by Connect, and the caregiver's reply is
 // saved (as caregiver-reported, not verified) and forwarded to the clinician.
 
+import type { DraftInput } from "./drafting.ts";
 import { compileProfile, suggestedQuestions } from "./profile.ts";
 import type { CareMessage, Store } from "./store.ts";
 
@@ -23,6 +24,8 @@ export interface CareDeps {
   /** Which caregiver the clinician is working with (one patient per caregiver). */
   currentCaregiver: () => string | undefined;
   now?: () => Date;
+  /** Intelligence: turns a clinician note into caregiver-friendly wording (null = use the note). */
+  draft?: (input: DraftInput) => Promise<string | null>;
 }
 
 const nowIso = (deps: { now?: () => Date }) => (deps.now?.() ?? new Date()).toISOString();
@@ -38,11 +41,22 @@ export const CLINICIAN_HELP = [
   "• \"tell them: Dim the lights tonight.\": a recommendation",
   "• \"send it\" / \"looks good\": approve the draft",
   "• \"change it to …\": edit the draft",
+  "• \"use my words\": send your note exactly as you typed it",
   "• \"never mind\": cancel the draft",
   "• \"any replies?\": what was sent and how they replied",
 ].join("\n");
 
-export type ClinicianCommand = "HELP" | "PROFILE" | "STATUS" | "APPROVE" | "EDIT" | "CANCEL" | "ASK" | "RECOMMEND" | "UNKNOWN";
+export type ClinicianCommand =
+  | "HELP"
+  | "PROFILE"
+  | "STATUS"
+  | "APPROVE"
+  | "EDIT"
+  | "CANCEL"
+  | "ASK"
+  | "RECOMMEND"
+  | "USE_MINE"
+  | "UNKNOWN";
 
 // Natural phrasings for each command. The message text after a prefix keeps
 // the clinician's original wording and capitalization.
@@ -68,6 +82,7 @@ const EXACT: Array<[ClinicianCommand, RegExp]> = [
     "APPROVE",
     /^(approve|approved|send|send it|send that|yes|y|yep|yeah|looks good|lgtm|ok|okay|ok send|go ahead|confirm|sounds good|good to go|perfect)$/i,
   ],
+  ["USE_MINE", /^(use my (?:words|wording|note|version)|send my (?:words|wording|note|version)|as i wrote it|use (?:the )?original|original)$/i],
   ["CANCEL", /^(cancel|never ?mind|don'?t send(?: it)?|do not send|scrap (?:it|that)|discard|delete (?:it|that|the draft)|no|nope|no thanks)$/i],
 ];
 
@@ -101,7 +116,15 @@ export function caregiverFacing(store: Store, m: CareMessage): string {
 }
 
 function preview(store: Store, m: CareMessage): string {
-  return `Draft ${m.type} for the caregiver:\n\n"${caregiverFacing(store, m)}"\n\nSay "send it" to approve, "change it to …" to edit, or "never mind" to cancel.`;
+  const drafted = m.draftedBy === "lucidity" && m.clinicianNote;
+  return [
+    drafted ? `Draft ${m.type} (worded by Lucidity from your note, please check it):` : `Draft ${m.type} for the caregiver:`,
+    "",
+    `"${caregiverFacing(store, m)}"`,
+    ...(drafted ? ["", `Your note: "${m.clinicianNote}"`] : []),
+    "",
+    `Say "send it" to approve, "change it to …" to edit,${drafted ? ' "use my words" to send your note as written,' : ""} or "never mind" to cancel.`,
+  ].join("\n");
 }
 
 /** Handles one message from the clinician; returns replies to the clinician. */
@@ -123,6 +146,13 @@ export async function handleClinicianMessage(deps: CareDeps, raw: string): Promi
     if (!draft || draft.status !== "draft") return ["There's no draft to edit."];
     if (!arg) return ['Add the new text, e.g. "change it to: Dim the lights tonight."'];
     draft.text = sentence(arg);
+    await store.commit();
+    return [preview(store, draft)];
+  }
+  if (command === "USE_MINE") {
+    if (!draft || draft.status !== "draft" || !draft.clinicianNote) return ["There's no Lucidity-worded draft to swap."];
+    draft.text = sentence(draft.clinicianNote);
+    draft.draftedBy = "clinician";
     await store.commit();
     return [preview(store, draft)];
   }
@@ -152,14 +182,36 @@ export async function handleClinicianMessage(deps: CareDeps, raw: string): Promi
 
   if (command === "ASK" || command === "RECOMMEND") {
     if (!arg) return [command === "ASK" ? 'Add a question or a number, e.g. "ask 1".' : 'Add the message, e.g. "tell them: Dim the lights tonight."'];
+    const type = command === "ASK" ? "question" : "recommendation";
     let body = sentence(arg);
+    let note: string | undefined;
     if (command === "ASK" && /^\d+$/.test(arg)) {
       const picked = suggestedQuestions(store, caregiver, deps.now?.())[Number(arg) - 1];
       if (!picked) return ['That number isn\'t in the suggested questions. Say "profile" to see them.'];
-      body = picked.text;
+      body = picked.text; // suggested questions are already caregiver-friendly
+    } else if (deps.draft) {
+      const state = store.caregiver(caregiver);
+      const since = new Date((deps.now?.() ?? new Date()).getTime() - 2 * 86_400_000);
+      const recent = store.recordsBetween(caregiver, since, deps.now?.() ?? new Date()).observations.at(-1);
+      const drafted = await deps.draft({
+        type,
+        note: arg,
+        patientLabel: state.patientLabel ?? "your loved one",
+        recentQuote: recent?.quote,
+      });
+      if (drafted) {
+        note = arg;
+        body = drafted;
+      }
     }
     if (draft?.status === "draft") draft.status = "cancelled"; // one draft at a time
-    const m = await store.addCareMessage({ caregiver, type: command === "ASK" ? "question" : "recommendation", text: body });
+    const m = await store.addCareMessage({
+      caregiver,
+      type,
+      text: body,
+      clinicianNote: note,
+      draftedBy: note ? "lucidity" : "clinician",
+    });
     await store.setCareDraft(m.id);
     return [preview(store, m)];
   }

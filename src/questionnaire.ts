@@ -21,6 +21,8 @@ export const CUE_MIN_DOMAINS = 2;
 /** ZBI cue: caregiver-distress rating at or above this on any recent observation. */
 export const CUE_HIGH_DISTRESS = 4;
 const MAX_UNCLEAR = 2;
+/** When a caregiver sends a rating to a YES/NO question (doesn't count as unclear). */
+export const PRESENCE_NUMBER_NUDGE = "This one is YES or NO first. If YES, I'll ask how severe it is next.";
 
 export interface QuestionnaireDeps {
   store: Store;
@@ -300,6 +302,9 @@ export async function handleQuestionnaireReply(deps: QuestionnaireDeps, caregive
 
   const part = a.cursor.part;
   const questionText = promptText(deps.wordings, a);
+  if (part === "presence" && /^\d+$/.test(text)) {
+    return [`${PRESENCE_NUMBER_NUDGE}\n\n${questionText}`];
+  }
   let parsed = parseAnswer(part, text);
   let interpretedBy: ItemResponse["interpretedBy"] = "rule";
   let clarification: string | null = null;
