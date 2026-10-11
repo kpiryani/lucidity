@@ -20,6 +20,7 @@ import {
   handleCheckInReminderReply,
   start,
   stressCueMet,
+  PRESENCE_NUMBER_NUDGE,
   type QuestionnaireDeps,
 } from "./questionnaire.ts";
 import { Store } from "./store.ts";
@@ -392,4 +393,18 @@ test("a check-in reminder is skipped if the check-in was just done", async () =>
   // Simulate an early retake: the reminder fires one day after a completed NPI-Q.
   const early = new Date(NOW.getTime() + 86_400_000);
   assert.equal(await checkInReminderText(store, wordings, r!, early), null);
+});
+
+test("a number sent to a YES/NO question gets a nudge and doesn't count as unclear", async () => {
+  const { store, d } = await started();
+  for (let i = 0; i < 3; i++) {
+    const reply = await handleQuestionnaireReply(d, C, "3");
+    assert.ok(reply[0]!.startsWith(PRESENCE_NUMBER_NUDGE));
+    assert.match(reply[0]!, /QUESTION NPIQ-01\?/);
+  }
+  const a = store.snapshot().assessments[0]!;
+  assert.equal(a.responses.length, 0);
+  assert.equal(a.retries, 0);
+  await handleQuestionnaireReply(d, C, "yes");
+  assert.equal(a.cursor.part, "severity");
 });

@@ -246,3 +246,6 @@ export const AI_ESCALATION_REPLY = [
   "If anyone is in danger, or things are getting worse, call 911 now. Otherwise, please call the doctor's office today.",
   "If you or anyone might be harmed, you can also call or text 988.",
 ].join("\n\n");
+
+/** Fixed, supportive line sent after AI_ESCALATION_REPLY instead of model text. */
+export const AI_ESCALATION_FOLLOWUP = "I'm here with you. When things are calmer, you can tell me how it went.";

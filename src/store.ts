@@ -149,8 +149,11 @@ export interface CareMessage {
   kind: "care_message";
   caregiver: string;
   type: "question" | "recommendation";
-  /** Exactly what the clinician approved. */
+  /** Exactly what the clinician approved (or will approve). */
   text: string;
+  /** The clinician's own note, when Lucidity drafted the wording from it. */
+  clinicianNote?: string;
+  draftedBy?: "clinician" | "lucidity";
   status: "draft" | "sent" | "failed" | "cancelled" | "not_sent_opted_out";
   createdBy: "simulated_clinician";
   createdAt: string;
@@ -192,6 +195,8 @@ export interface CaregiverState {
   awaitingCareReplyFor?: string;
   /** Last time the clinician was nudged about new updates. */
   lastClinicianNudgeAt?: string;
+  /** When the first-time welcome was sent. */
+  welcomedAt?: string;
 }
 
 interface Data {
@@ -444,7 +449,9 @@ export class Store {
     return r;
   }
 
-  async addCareMessage(input: Pick<CareMessage, "caregiver" | "type" | "text">): Promise<CareMessage> {
+  async addCareMessage(
+    input: Pick<CareMessage, "caregiver" | "type" | "text"> & Partial<Pick<CareMessage, "clinicianNote" | "draftedBy">>,
+  ): Promise<CareMessage> {
     const message: CareMessage = {
       id: `care_${randomUUID().slice(0, 8)}`,
       kind: "care_message",

@@ -8,6 +8,30 @@ Lucidity keeps the patient, the family caregiver, and the care team connected be
 
 ---
 
+## What's built
+
+The whole loop runs over iMessage today, with two phones: the caregiver's and a clinician's (labeled **"Simulated clinician"** in the demo).
+
+```
+Caregiver texts ──▶ CONNECT ──▶ INTELLIGENCE ──▶ CARE ──▶ CONNECT ──▶ Caregiver
+                    safety first,  profile compiled  clinician reads,   delivers the
+                    follow-ups,    by code: changes,  asks, approves     approved text,
+                    check-ins,     quotes, suggested  the exact wording  saves the reply
+                    reminders      questions, drafts
+```
+
+| | What works | Docs |
+|---|---|---|
+| **Safety** | Every text checked by fixed rules before any AI; fixed 911 / doctor / 988 guidance; AI can flag what rules miss (still fixed wording); clinician alerted | `src/triage.ts` |
+| **Conversation** | A warm two-message welcome the first time; caregivers text naturally; the AI (GLM-5.3) saves observations with their exact words, asks one follow-up at a time, captures lucid moments; code guardrails stop it from claiming saves it didn't make or changing records unasked | [Phase 2](docs/phase-2-test-scenarios.md) |
+| **Clinical check-ins** | When patterns appear, Lucidity offers the **NPI-Q** (behavior) or **Zarit Burden Interview** items 1–12 (caregiver strain), hands off to word-for-word questions, understands casual answers, scores **in code** | [Phase 3](docs/phase-3-questionnaire.md) |
+| **Reminders** | "Remind me to give Dad his meds at 8pm" → texted at 8pm; daily/weekly; recurring check-in reminders after a first check-in | [Phase 4](docs/phase-4-reminders.md) |
+| **Care loop** | Clinician texts "how is he doing?" → one-page profile (Sept vs Oct changes, caregiver's words, suggested questions); "tell them: …" → Lucidity drafts caregiver-friendly wording → clinician approves → delivered; reply forwarded back | [Phase 5](docs/phase-5-close-the-loop.md) |
+
+**Simulated in the demo:** the clinician is a teammate; Jonathan's September/October history is synthetic (`npm run demo:seed`); data lives in a local JSON file. Nothing reaches a caregiver without clinician approval, and all demo data is synthetic.
+
+---
+
 ## The problem
 
 - Dementia care happens at home, but decisions happen in short clinic visits. By the time the appointment comes, caregivers have forgotten details: *when* the agitation started, *how often* Dad was up at night, *what* triggered it.
@@ -42,9 +66,9 @@ Lucidity is organized into three pillars. The system runs in **both directions**
 
 | Pillar | Role | Hackathon status |
 |---|---|---|
-| **1. Connect** | Make participation effortless for caregivers | ✅ Core |
-| **2. Intelligence** | Turn messages into structured, linked understanding | 🟡 Minimal version core; full version stretch |
-| **3. Care** | Give clinicians a clear view and a way to respond | ✅ Core |
+| **1. Connect** | Make participation effortless for caregivers | ✅ Built: safety, conversation, check-ins, reminders, delivery |
+| **2. Intelligence** | Turn messages into structured, linked understanding | ✅ Built (minimal): code-scored check-ins, profile with changes over time, suggested questions, drafted wording |
+| **3. Care** | Give clinicians a clear view and a way to respond | ✅ Built over iMessage (clinician phone); web dashboard is future work |
 
 ---
 
@@ -123,27 +147,26 @@ The physician and care-team experience. This is what makes Lucidity a bridge rat
 ## Architecture
 
 ```
-Caregiver (iMessage)
+Caregiver's iPhone            Clinician's iPhone ("Simulated clinician")
+        │  iMessage                    │  iMessage
+        ▼                              ▼
+Photon Spectrum (spectrum-ts, cloud iMessage lines)
         │
         ▼
-Photon Spectrum (spectrum-ts)  ── iMessage delivery layer        [Connect]
+Lucidity server (TypeScript / Node, one process)  — src/index.ts routes by sender
+   ├─ Safety triage: fixed rules first, every message           [Connect]   src/triage.ts
+   ├─ STOP / START, burst grouping (10s)                         [Connect]
+   ├─ Check-in mode: verbatim NPI-Q / ZBI, code scoring          [Connect + Intelligence]  src/questionnaire.ts, src/instruments/
+   ├─ AI conversation: GLM-5.3 + validated tool calls            [Connect]   src/agent.ts, src/prompt.ts
+   │    log_npi_observation · update_observation · log_lucidity_episode · log_general
+   │    escalate_urgent · offer_questionnaire · set/change/cancel_reminder · no_record_needed
+   ├─ Reminder timer (time zones, repeats)                       [Connect]   src/reminders.ts
+   ├─ Profile + suggested questions (code) · message drafting (AI) [Intelligence]  src/profile.ts, src/drafting.ts
+   └─ Clinician commands, approval gate, reply forwarding        [Care]      src/care.ts
         │
         ▼
-Lucidity agent server (TypeScript / Node)
-   ├─ Safety triage (rules + LLM)                                 [Connect]
-   ├─ LLM with structured tool calls                              [Intelligence]
-   │    ├─ log_npi_observation(domain, severity, distress, quote, timestamp)
-   │    ├─ log_lucidity_episode(duration, triggers, what_was_said, after_state, timestamp)
-   │    ├─ escalate_urgent(reason)
-   │    └─ log_general(text)
-   ├─ Per-user conversation state (for follow-ups)
-   └─ Trend aggregation + missing-info rules + weekly summary     [Intelligence]
-        │
-        ▼
-Database (observations, lucidity episodes, alerts, care instructions)
-        │
-        ▼
-Clinician dashboard + "send guidance" back to caregiver           [Care]
+data/lucidity.json (git-ignored): history, observations, lucidity episodes, notes,
+alerts, assessments, reminders, care messages
 ```
 
 ### Tech stack
@@ -151,9 +174,11 @@ Clinician dashboard + "send guidance" back to caregiver           [Care]
 |---|---|
 | Messaging | [Photon Spectrum](https://docs.photon.codes) (`spectrum-ts`, cloud iMessage) |
 | Runtime | Node.js 22+, TypeScript, `tsx` |
-| Agent | LLM with structured tool calling |
-| Storage | TBD (e.g. Supabase / Postgres) |
-| Dashboard | TBD (e.g. Next.js) |
+| AI | GLM-5.3 via OpenCode (any OpenAI-compatible model), [Vercel AI SDK](https://ai-sdk.dev), zod-validated tool calls |
+| Scoring, scheduling, profile | Plain TypeScript (deterministic; no model) |
+| Storage | Local JSON file (`data/lucidity.json`); a database is future work |
+| Clinician UI | iMessage (clinician phone); a web dashboard is future work |
+| Tests | `node:test`, 111 tests with a mock model (no API calls) |
 
 ---
 
@@ -218,6 +243,13 @@ You should see:
 Connecting can take up to ~30 seconds. Once both lines appear, text the project's iMessage number from your phone in plain language. The bot must be running for replies to arrive.
 
 Records are saved to `data/lucidity.json` (gitignored). Delete that file to reset all memory.
+
+### Demo (two phones)
+Set `CLINICIAN_PHONE` in `.env`, stop the bot, then:
+```bash
+npm run demo:seed -- --full
+```
+Start the bot and follow the script in [docs/phase-5-close-the-loop.md](docs/phase-5-close-the-loop.md).
 
 ### Tests
 ```bash

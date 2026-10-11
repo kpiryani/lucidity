@@ -2,6 +2,8 @@ import { Spectrum, type Message, type Space } from "spectrum-ts";
 import { imessage } from "@spectrum-ts/imessage";
 import { runAgent } from "./agent.ts";
 import { captureCareReply, handleClinicianMessage, nudgeClinician, type CareDeps } from "./care.ts";
+import { draftCareMessage } from "./drafting.ts";
+import { isGreetingOnly, welcomeMessages } from "./welcome.ts";
 import { Debouncer } from "./debounce.ts";
 import { interpretWithLlm } from "./answers.ts";
 import type { Wordings } from "./instruments/index.ts";
@@ -23,7 +25,7 @@ import {
 } from "./questionnaire.ts";
 import { Store, type Alert } from "./store.ts";
 import { DEFAULT_TIMEZONE, isValidTimeZone, startReminderLoop } from "./reminders.ts";
-import { AI_ESCALATION_REPLY, triage, triageReply } from "./triage.ts";
+import { AI_ESCALATION_FOLLOWUP, AI_ESCALATION_REPLY, triage, triageReply } from "./triage.ts";
 // Spectrum bridges a single agent loop to many messaging interfaces.
 // Each provider in `providers` adds an interface (terminal TUI, iMessage, …).
 // Docs: https://photon.codes/docs/spectrum-ts
@@ -122,6 +124,8 @@ const careDeps: CareDeps | null = CLINICIAN_PHONE
       currentCaregiver: () =>
         process.env.DEMO_CAREGIVER_PHONE?.trim() ||
         store.caregiversByActivity().find((c) => c.address !== CLINICIAN_PHONE)?.address,
+      // Intelligence drafts caregiver-friendly wording; the clinician approves it.
+      draft: llm ? (input) => draftCareMessage(llm, input) : undefined,
     }
   : null;
 console.log(
@@ -290,7 +294,10 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
       }
 
       // When the rules already replied, the model only records; its text is dropped.
-      const reply = safetyHandled ? null : result.reply;
+      // Safety wording is never generated: when the rules replied, the model only
+      // records; when the AI escalated, it gets a fixed supportive line instead of
+      // its own text (which could contain medical advice).
+      const reply = safetyHandled ? null : result.escalated ? AI_ESCALATION_FOLLOWUP : result.reply;
       if (reply) await space.send(reply);
       else if (!safetyHandled && !result.escalated) await message.react("👍");
       await recordTurn(reply);
@@ -325,7 +332,8 @@ for await (const [space, message] of app.messages) {
   // Clinician commands (Lucidity Care) never go through caregiver handling.
   if (careDeps && from === CLINICIAN_PHONE) {
     try {
-      await sendAll(space, await handleClinicianMessage(careDeps, text));
+      // Typing bubble while Lucidity drafts wording for the clinician.
+      await space.responding(async () => sendAll(space, await handleClinicianMessage(careDeps, text)));
     } catch (err) {
       console.error("[lucidity.care] failed to handle clinician message", err);
     }
@@ -380,6 +388,21 @@ for await (const [space, message] of app.messages) {
     if (store.caregiver(from).optedOut) {
       if (!result) await space.send("You're currently unsubscribed. Text START if you'd like to talk with Lucidity again.");
       continue;
+    }
+
+    // First-time welcome (fixed, warm). Emergencies come first; the welcome
+    // waits for a calmer message.
+    const caregiverState = store.caregiver(from);
+    if (!result && !caregiverState.welcomedAt && caregiverState.history.length === 0) {
+      caregiverState.welcomedAt = new Date().toISOString();
+      const welcome = await space.responding(async () => {
+        const messages = await welcomeMessages(llm, from);
+        await sendAll(space, messages);
+        return messages;
+      });
+      await store.appendTurn(from, "user", text);
+      for (const m of welcome) await store.appendTurn(from, "assistant", m);
+      if (isGreetingOnly(text)) continue;
     }
 
     // Check-in answers are handled immediately by code, not batched for the AI.

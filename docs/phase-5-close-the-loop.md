@@ -53,8 +53,8 @@ Caregiver phone = your phone. Clinician phone = teammate ("Simulated clinician")
 | 3 | Clinician | `ask 1` | Draft: "Question from Dad's care team: Does Dad's anxiety tend to happen at a particular time of day…" |
 | 4 | Clinician | `send it` | Caregiver receives it |
 | 5 | Caregiver | `usually right after dinner` | Lucidity thanks them; clinician gets "Caregiver replied…" |
-| 6 | Clinician | `tell them: That sounds like a hard evening. One small change may help: dim the lights and lower the noise tonight. Want to try it? Reply YES, or skip.` | Draft shown with exact wording |
-| 7 | Clinician | `looks good` | Caregiver receives "From Dad's care team: That sounds like a hard evening…" |
+| 6 | Clinician | `tell them: create a calm environment and remove environmental triggers` | Lucidity drafts caregiver-friendly wording (e.g. "Dad's anxiety sounds really hard tonight. One thing that can help is making his space calm… Want to try it? Reply YES, or skip.") and shows the clinician's note under it |
+| 7 | Clinician | `looks good` (or `use my words` to send the note as typed, or `change it to: …`) | Caregiver receives "From Dad's care team: …" exactly as approved |
 | 8 | Caregiver | `yes` | "Thank you. I've let Dad's care team know you'll try it."; clinician gets the reply |
 | 9 | Caregiver | `he fell and hit his head` | Instant fixed 911 text; clinician gets "⚠ Lucidity EMERGENCY alert for Jonathan…" |
 | 10 | Clinician | `any replies?` | Messages sent and replies |
@@ -64,5 +64,5 @@ Other phrases: "change it to: …" (edit the draft), "never mind" / "don't send 
 ## What's still simulated
 
 - The clinician is a teammate labeled "Simulated clinician"; September/October data is synthetic.
-- Profile wording is templated by code (no AI-written report text yet); suggested questions are simple rules.
+- Profile wording is templated by code; suggested questions are simple rules. Only the caregiver-facing wording of clinician notes is AI-drafted (and always approved by the clinician).
 - No "at most one care-team message per day" limit enforced (requirements RET8) so the demo can show a question and a recommendation.
