@@ -3,7 +3,7 @@ import { imessage } from "@spectrum-ts/imessage";
 import { runAgent } from "./agent.ts";
 import { captureCareReply, handleClinicianMessage, nudgeClinician, type CareDeps } from "./care.ts";
 import { draftCareMessage } from "./drafting.ts";
-import { WELCOME_MESSAGES, isGreetingOnly } from "./welcome.ts";
+import { isGreetingOnly, welcomeMessages } from "./welcome.ts";
 import { Debouncer } from "./debounce.ts";
 import { interpretWithLlm } from "./answers.ts";
 import type { Wordings } from "./instruments/index.ts";
@@ -395,9 +395,13 @@ for await (const [space, message] of app.messages) {
     const caregiverState = store.caregiver(from);
     if (!result && !caregiverState.welcomedAt && caregiverState.history.length === 0) {
       caregiverState.welcomedAt = new Date().toISOString();
-      await sendAll(space, WELCOME_MESSAGES);
+      const welcome = await space.responding(async () => {
+        const messages = await welcomeMessages(llm, from);
+        await sendAll(space, messages);
+        return messages;
+      });
       await store.appendTurn(from, "user", text);
-      for (const m of WELCOME_MESSAGES) await store.appendTurn(from, "assistant", m);
+      for (const m of welcome) await store.appendTurn(from, "assistant", m);
       if (isGreetingOnly(text)) continue;
     }
 

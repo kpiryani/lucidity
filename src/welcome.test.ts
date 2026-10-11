@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { WELCOME_MESSAGES, isGreetingOnly } from "./welcome.ts";
+import { WELCOME_MESSAGES, acceptWelcome, isGreetingOnly } from "./welcome.ts";
 
 test("greetings get only the welcome; real reports continue to the AI", () => {
   for (const t of ["hi", "Hello!", "hey there 👋", "start", "good morning", "test"]) assert.ok(isGreetingOnly(t), t);
@@ -12,4 +12,16 @@ test("welcome is two short, warm messages that mention STOP and ask who they car
   assert.match(WELCOME_MESSAGES[0]!, /^Hi, I'm Lucidity/);
   assert.match(WELCOME_MESSAGES[1]!, /STOP/);
   assert.match(WELCOME_MESSAGES[1]!, /Who are you caring for\?$/);
+});
+
+test("AI welcome drafts must include the essentials and avoid promises", () => {
+  const good =
+    "Hi, I'm Lucidity 💛 I'm here to help you keep track of how your loved one is doing between doctor visits.\n---\nText me anytime in your own words, a hard night or a sweet moment. I'll save it for the care team, help with reminders, and tell you right away what to do if something sounds urgent. Text STOP anytime to pause. Who are you caring for?";
+  assert.equal(acceptWelcome(good)?.length, 2);
+  // the fixed fallback passes its own checks
+  assert.ok(acceptWelcome(WELCOME_MESSAGES.join("\n---\n")));
+  assert.equal(acceptWelcome(good.replace("Text STOP anytime to pause. ", "")), null); // no STOP
+  assert.equal(acceptWelcome(good.replace("Who are you caring for?", "Talk soon!")), null); // no closing question
+  assert.equal(acceptWelcome(good.replace("between doctor visits", "and I'm monitoring 24/7")), null); // promise
+  assert.equal(acceptWelcome(good.replace("\n---\n", " ")), null); // not two messages
 });
