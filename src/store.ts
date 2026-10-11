@@ -102,7 +102,7 @@ export interface Assessment {
   kind: "assessment";
   instrument: InstrumentCode;
   instrumentVersion: string;
-  administrationMode: "imessage_verbatim";
+  administrationMode: "imessage_verbatim" | "synthetic_fixture";
   recallPeriod: string;
   respondent: string; // caregiver address
   respondentRole: "caregiver";
@@ -117,7 +117,7 @@ export interface Assessment {
   /** Unclear replies to the current prompt so far. */
   retries: number;
   scores: Scores | null;
-  source: "caregiver_imessage";
+  source: "caregiver_imessage" | "synthetic_demo";
 }
 
 export interface Reminder {
@@ -141,6 +141,23 @@ export interface Reminder {
   lastSentAt: string | null;
   cancelledAt: string | null;
   attempts: number;
+}
+
+/** A message from the care team to a caregiver (Care -> Connect). */
+export interface CareMessage {
+  id: string;
+  kind: "care_message";
+  caregiver: string;
+  type: "question" | "recommendation";
+  /** Exactly what the clinician approved. */
+  text: string;
+  status: "draft" | "sent" | "failed" | "cancelled" | "not_sent_opted_out";
+  createdBy: "simulated_clinician";
+  createdAt: string;
+  approvedAt: string | null;
+  sentAt: string | null;
+  /** The caregiver's reply, saved as caregiver-reported (not verified). */
+  reply: { text: string; at: string } | null;
 }
 
 export interface CaregiverState {
@@ -169,6 +186,12 @@ export interface CaregiverState {
   checkInReminderPrompt?: { instrument: InstrumentCode; patientLabel: string; status: "queued" | "asked" };
   /** When we asked about a recurring check-in reminder, per instrument (asked once). */
   checkInReminderAsked?: Partial<Record<InstrumentCode, string>>;
+  /** Patient's display name for the care team (e.g. "Jonathan"); one patient per caregiver. */
+  patientName?: string;
+  /** Care-team message waiting for the caregiver's reply. */
+  awaitingCareReplyFor?: string;
+  /** Last time the clinician was nudged about new updates. */
+  lastClinicianNudgeAt?: string;
 }
 
 interface Data {
@@ -179,6 +202,9 @@ interface Data {
   alerts: Alert[];
   assessments: Assessment[];
   reminders: Reminder[];
+  careMessages: CareMessage[];
+  /** The clinician's message waiting for APPROVE / EDIT / CANCEL. */
+  careDraftId?: string;
 }
 
 const HISTORY_LIMIT = 40;
@@ -191,6 +217,7 @@ const emptyData = (): Data => ({
   alerts: [],
   assessments: [],
   reminders: [],
+  careMessages: [],
 });
 
 const now = () => new Date().toISOString();
@@ -415,6 +442,66 @@ export class Store {
     r.cancelledAt = now();
     await this.save();
     return r;
+  }
+
+  async addCareMessage(input: Pick<CareMessage, "caregiver" | "type" | "text">): Promise<CareMessage> {
+    const message: CareMessage = {
+      id: `care_${randomUUID().slice(0, 8)}`,
+      kind: "care_message",
+      createdBy: "simulated_clinician",
+      status: "draft",
+      createdAt: now(),
+      approvedAt: null,
+      sentAt: null,
+      reply: null,
+      ...input,
+    };
+    this.data.careMessages.push(message);
+    await this.save();
+    return message;
+  }
+
+  careMessage(id: string | undefined): CareMessage | undefined {
+    return id ? this.data.careMessages.find((m) => m.id === id) : undefined;
+  }
+
+  careMessagesFor(caregiver: string): CareMessage[] {
+    return this.data.careMessages.filter((m) => m.caregiver === caregiver);
+  }
+
+  get careDraftId(): string | undefined {
+    return this.data.careDraftId;
+  }
+
+  async setCareDraft(id: string | undefined): Promise<void> {
+    this.data.careDraftId = id;
+    await this.save();
+  }
+
+  /** Caregivers with any history, most recently active first. */
+  caregiversByActivity(): CaregiverState[] {
+    const last = (c: CaregiverState) => c.history.at(-1)?.at ?? "";
+    return Object.values(this.data.caregivers).sort((a, b) => last(b).localeCompare(last(a)));
+  }
+
+  /** All records for a caregiver within a window (for the profile). */
+  recordsBetween(caregiver: string, from: Date, to: Date) {
+    const inRange = (at: string) => Date.parse(at) >= from.getTime() && Date.parse(at) <= to.getTime();
+    const mine = <T extends { caregiver: string; reportedAt: string }>(xs: T[]) =>
+      xs.filter((x) => x.caregiver === caregiver && inRange(x.reportedAt));
+    return {
+      observations: mine(this.data.observations),
+      lucidityEpisodes: mine(this.data.lucidityEpisodes),
+      notes: mine(this.data.notes),
+      alerts: this.data.alerts.filter((a) => a.caregiver === caregiver && inRange(a.at)),
+    };
+  }
+
+  /** Completed or incomplete assessments of an instrument, newest first. */
+  assessmentsFor(caregiver: string, instrument: InstrumentCode): Assessment[] {
+    return this.data.assessments
+      .filter((a) => a.respondent === caregiver && a.instrument === instrument && a.completedAt)
+      .sort((a, b) => b.completedAt!.localeCompare(a.completedAt!));
   }
 
   /** This caregiver's recent general notes, oldest first. */
