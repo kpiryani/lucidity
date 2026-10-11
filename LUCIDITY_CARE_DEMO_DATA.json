@@ -1,0 +1,3847 @@
+{
+  "schema_version": "lucidity-care-demo-v1",
+  "component": "Lucidity Care",
+  "data_kind": "synthetic",
+  "description": "Lucidity Care dashboard and clinical review example using synthetic Connect inputs and simulated Intelligence output. All identities, evidence, scores, reviews, and delivery states are synthetic.",
+  "selected_period": {
+    "start_date": "2026-09-13",
+    "end_date": "2026-10-10",
+    "precision": "day",
+    "basis": "reported_interval"
+  },
+  "instrument_registry": {
+    "version": "lucidity-project-registry-2026-10-10",
+    "copyrighted_item_text_included": false,
+    "rights_status": "not_asserted_for_clinical_administration",
+    "instruments": {
+      "AD8": {
+        "item_count": 8,
+        "range": [
+          0,
+          8
+        ],
+        "totals": [
+          "total_score"
+        ]
+      },
+      "FAQ": {
+        "item_count": 10,
+        "range": [
+          0,
+          30
+        ],
+        "totals": [
+          "total_score"
+        ]
+      },
+      "NPIQ": {
+        "item_count": 12,
+        "subscore_ranges": {
+          "severity": [
+            0,
+            36
+          ],
+          "distress": [
+            0,
+            60
+          ]
+        },
+        "domain_severity_range_when_present": [
+          1,
+          3
+        ],
+        "domain_distress_range": [
+          0,
+          5
+        ]
+      },
+      "ZBI22": {
+        "item_count": 22,
+        "range": [
+          0,
+          88
+        ],
+        "totals": [
+          "total_score"
+        ]
+      }
+    }
+  },
+  "patient": {
+    "record_id": "P-DEMO-01",
+    "record_type": "patient_context",
+    "schema_version": "1.0",
+    "patient_id": "P-DEMO-01",
+    "respondent_id": null,
+    "care_team_id": "TEAM-DEMO-01",
+    "data_kind": "synthetic",
+    "source_type": "synthetic_baseline",
+    "source_record_ids": [],
+    "recorded_at": "2026-10-10T09:00:00-04:00",
+    "observed_period": {
+      "start_date": null,
+      "end_date": null,
+      "precision": "unknown",
+      "basis": "reported_interval"
+    },
+    "verification_status": "synthetic_record",
+    "version": 1,
+    "supersedes_record_id": null,
+    "display_name": "Mara Example",
+    "age": 76,
+    "living_situation": "With adult daughter",
+    "diagnosis": {
+      "status": "unknown",
+      "value": null,
+      "source_record_ids": []
+    },
+    "caregiver_links": [
+      {
+        "caregiver_id": "C-DEMO-01",
+        "display_name": "Alex Example",
+        "relationship": "adult_child",
+        "observation_coverage": "primary_reporter",
+        "authorization_reference": "CONSENT-DEMO-01"
+      }
+    ],
+    "timezone": "America/New_York",
+    "baseline_record_id": "BASE-DEMO-01"
+  },
+  "authorization": {
+    "record_id": "CONSENT-DEMO-01",
+    "record_type": "simulated_authorization",
+    "schema_version": "1.0",
+    "patient_id": "P-DEMO-01",
+    "respondent_id": "C-DEMO-01",
+    "care_team_id": "TEAM-DEMO-01",
+    "data_kind": "synthetic",
+    "source_type": "synthetic_baseline",
+    "source_record_ids": [],
+    "recorded_at": "2026-10-10T09:00:00-04:00",
+    "observed_period": {
+      "start_date": null,
+      "end_date": null,
+      "precision": "unknown",
+      "basis": "reported_interval"
+    },
+    "verification_status": "synthetic_record",
+    "version": 1,
+    "supersedes_record_id": null,
+    "messaging_opt_in": true,
+    "care_team_sharing": true,
+    "status": "active",
+    "messaging_recipient_ref": "RECIPIENT-DEMO-01",
+    "live_contact_details": null
+  },
+  "baseline": {
+    "record_id": "BASE-DEMO-01",
+    "record_type": "baseline",
+    "schema_version": "1.0",
+    "patient_id": "P-DEMO-01",
+    "respondent_id": "C-DEMO-01",
+    "care_team_id": "TEAM-DEMO-01",
+    "data_kind": "synthetic",
+    "source_type": "synthetic_baseline",
+    "source_record_ids": [
+      "EV-BASE"
+    ],
+    "recorded_at": "2026-10-10T09:00:00-04:00",
+    "observed_period": {
+      "start_date": null,
+      "end_date": null,
+      "precision": "unknown",
+      "basis": "reported_interval"
+    },
+    "verification_status": "synthetic_record",
+    "version": 1,
+    "supersedes_record_id": null,
+    "activities": [
+      {
+        "activity_id": "ACT-CHESS",
+        "name": "Chess",
+        "historical_enjoyment": "yes",
+        "historical_ability": "independent"
+      },
+      {
+        "activity_id": "ACT-GARDEN",
+        "name": "Gardening",
+        "historical_enjoyment": "yes",
+        "historical_ability": "independent"
+      }
+    ],
+    "confirmation_status": "synthetic_caregiver_confirmed"
+  },
+  "evidence": [
+    {
+      "record_id": "EV-BASE",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_baseline",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Mara has enjoyed chess and gardening for years. She used to do both independently.",
+      "message_id": "MSG-EV-BASE",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T09:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-NIGHT-1",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-19T08:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She woke and walked around the house on 2 of the 7 nights this week.",
+      "message_id": "MSG-EV-NIGHT-1",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-19T08:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-NIGHT-CONFIRM-1",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-19T08:05:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that describes the week ending 2026-09-19.",
+      "message_id": "MSG-EV-NIGHT-CONFIRM-1",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-19T08:05:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-NIGHT-2",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-26T08:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-20",
+        "end_date": "2026-09-26",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "I do not know how many nights she woke this week.",
+      "message_id": "MSG-EV-NIGHT-2",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-26T08:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-NIGHT-CONFIRM-2",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-26T08:05:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-20",
+        "end_date": "2026-09-26",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that describes the week ending 2026-09-26.",
+      "message_id": "MSG-EV-NIGHT-CONFIRM-2",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-26T08:05:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-NIGHT-3",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-03T08:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-27",
+        "end_date": "2026-10-03",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She woke and walked around the house on 5 of the 7 nights this week.",
+      "message_id": "MSG-EV-NIGHT-3",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-03T08:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-NIGHT-CONFIRM-3",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-03T08:05:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-27",
+        "end_date": "2026-10-03",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that describes the week ending 2026-10-03.",
+      "message_id": "MSG-EV-NIGHT-CONFIRM-3",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-03T08:05:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-NIGHT-4",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T08:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She woke and walked around the house on 3 of the 7 nights this week.",
+      "message_id": "MSG-EV-NIGHT-4",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T08:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-NIGHT-CONFIRM-4",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T08:05:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that describes the week ending 2026-10-10.",
+      "message_id": "MSG-EV-NIGHT-CONFIRM-4",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T08:05:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CHESS-1",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-19T08:10:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She played chess with help and enjoyed it.",
+      "message_id": "MSG-EV-ACT-CHESS-1",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-19T08:10:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CONFIRM-CHESS-1",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-19T08:15:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that is right for that week.",
+      "message_id": "MSG-EV-ACT-CONFIRM-CHESS-1",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-19T08:15:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CHESS-2",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-26T08:10:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-20",
+        "end_date": "2026-09-26",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She did not play chess because nobody was available to play with her.",
+      "message_id": "MSG-EV-ACT-CHESS-2",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-26T08:10:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CONFIRM-CHESS-2",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-26T08:15:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-20",
+        "end_date": "2026-09-26",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that is right for that week.",
+      "message_id": "MSG-EV-ACT-CONFIRM-CHESS-2",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-26T08:15:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CHESS-3",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-03T08:10:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-27",
+        "end_date": "2026-10-03",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She did not play chess this week. I am not sure why.",
+      "message_id": "MSG-EV-ACT-CHESS-3",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-03T08:10:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CONFIRM-CHESS-3",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-03T08:15:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-27",
+        "end_date": "2026-10-03",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that is right for that week.",
+      "message_id": "MSG-EV-ACT-CONFIRM-CHESS-3",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-03T08:15:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CHESS-4",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T08:10:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She played chess with my help. I had to remind her how the pieces move. She enjoyed playing.",
+      "message_id": "MSG-EV-ACT-CHESS-4",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T08:10:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CONFIRM-CHESS-4",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T08:15:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that is right for that week.",
+      "message_id": "MSG-EV-ACT-CONFIRM-CHESS-4",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T08:15:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-GARDEN-1",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-19T08:10:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She gardened by herself and enjoyed it.",
+      "message_id": "MSG-EV-ACT-GARDEN-1",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-19T08:10:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CONFIRM-GARDEN-1",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-19T08:15:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that is right for that week.",
+      "message_id": "MSG-EV-ACT-CONFIRM-GARDEN-1",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-19T08:15:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-GARDEN-2",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T08:10:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She enjoyed gardening, but I helped because her knee was sore.",
+      "message_id": "MSG-EV-ACT-GARDEN-2",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T08:10:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-ACT-CONFIRM-GARDEN-2",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T08:15:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Yes, that is right for that week.",
+      "message_id": "MSG-EV-ACT-CONFIRM-GARDEN-2",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T08:15:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-SUPPORT",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "I feel tired and would like someone from the care team to help me understand what to report.",
+      "message_id": "MSG-EV-SUPPORT",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T09:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-AD8-SEP",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-09-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic AD8 item-response fixture dated 2026-09-01; not an actual clinical administration.",
+      "message_id": "MSG-FORM-AD8-SEP",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-01T10:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-AD8-OCT",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-10-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic AD8 item-response fixture dated 2026-10-01; not an actual clinical administration.",
+      "message_id": "MSG-FORM-AD8-OCT",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-01T10:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-FAQ-SEP",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-09-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic FAQ item-response fixture dated 2026-09-01; not an actual clinical administration.",
+      "message_id": "MSG-FORM-FAQ-SEP",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-01T10:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-FAQ-OCT",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-10-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic FAQ item-response fixture dated 2026-10-01; not an actual clinical administration.",
+      "message_id": "MSG-FORM-FAQ-OCT",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-01T10:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-NPIQ-SEP",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-08-01",
+        "end_date": "2026-08-31",
+        "precision": "day",
+        "basis": "preceding_month"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic NPIQ item-response fixture dated 2026-09-01; not an actual clinical administration.",
+      "message_id": "MSG-FORM-NPIQ-SEP",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-01T10:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-NPIQ-OCT",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-09-30",
+        "precision": "day",
+        "basis": "preceding_month"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic NPIQ item-response fixture dated 2026-10-01; not an actual clinical administration.",
+      "message_id": "MSG-FORM-NPIQ-OCT",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-01T10:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-ZBI22-SEP",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-09-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-09-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic ZBI22 item-response fixture dated 2026-09-01; not an actual clinical administration.",
+      "message_id": "MSG-FORM-ZBI22-SEP",
+      "channel": "simulated_photon",
+      "received_at": "2026-09-01T10:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-ZBI22-OCT",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-10-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic ZBI22 item-response fixture dated 2026-10-01; not an actual clinical administration.",
+      "message_id": "MSG-FORM-ZBI22-OCT",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-01T10:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "FORM-NPIQ-PARTIAL",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-10",
+        "end_date": "2026-10-09",
+        "precision": "day",
+        "basis": "preceding_month"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "Synthetic October 10 NPI-Q: nighttime domain present, severity 2, distress 4; other domains not asked.",
+      "message_id": "MSG-FORM-NPIQ-PARTIAL",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T09:00:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    },
+    {
+      "record_id": "EV-FOLLOWUP-REPLY",
+      "record_type": "evidence",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [],
+      "recorded_at": "2026-10-10T10:30:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "text": "She moved the pieces herself, but needed reminders of the rules.",
+      "message_id": "MSG-EV-FOLLOWUP-REPLY",
+      "channel": "simulated_photon",
+      "received_at": "2026-10-10T10:30:00-04:00",
+      "original_language": "en",
+      "access_reference": "CONSENT-DEMO-01"
+    }
+  ],
+  "observations": [
+    {
+      "record_id": "OBS-NIGHT-1",
+      "record_type": "observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-NIGHT-1",
+        "EV-NIGHT-CONFIRM-1"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "subject": "patient",
+      "topic": "nighttime_behavior",
+      "description": "She woke and walked around the house on 2 of the 7 nights this week.",
+      "evidence_quote": "She woke and walked around the house on 2 of the 7 nights this week.",
+      "report_type": "caregiver_observation",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-NIGHT-CONFIRM-1"
+      ],
+      "change_from_baseline": "unknown",
+      "measure": {
+        "value": 2,
+        "numerator": 2,
+        "denominator": 7,
+        "unit": "affected_nights_per_observed_nights",
+        "value_status": "confirmed_reported_count"
+      },
+      "related_instrument_items": [
+        "NPIQ-11"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "OBS-NIGHT-2",
+      "record_type": "observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-NIGHT-2",
+        "EV-NIGHT-CONFIRM-2"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-20",
+        "end_date": "2026-09-26",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "subject": "patient",
+      "topic": "nighttime_behavior",
+      "description": "I do not know how many nights she woke this week.",
+      "evidence_quote": "I do not know how many nights she woke this week.",
+      "report_type": "caregiver_observation",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-NIGHT-CONFIRM-2"
+      ],
+      "change_from_baseline": "unknown",
+      "measure": {
+        "value": null,
+        "numerator": null,
+        "denominator": null,
+        "unit": "affected_nights_per_observed_nights",
+        "value_status": "unknown"
+      },
+      "related_instrument_items": [
+        "NPIQ-11"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "OBS-NIGHT-3",
+      "record_type": "observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-NIGHT-3",
+        "EV-NIGHT-CONFIRM-3"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-27",
+        "end_date": "2026-10-03",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "subject": "patient",
+      "topic": "nighttime_behavior",
+      "description": "She woke and walked around the house on 5 of the 7 nights this week.",
+      "evidence_quote": "She woke and walked around the house on 5 of the 7 nights this week.",
+      "report_type": "caregiver_observation",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-NIGHT-CONFIRM-3"
+      ],
+      "change_from_baseline": "unknown",
+      "measure": {
+        "value": 5,
+        "numerator": 5,
+        "denominator": 7,
+        "unit": "affected_nights_per_observed_nights",
+        "value_status": "confirmed_reported_count"
+      },
+      "related_instrument_items": [
+        "NPIQ-11"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "OBS-NIGHT-4",
+      "record_type": "observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-NIGHT-4",
+        "EV-NIGHT-CONFIRM-4"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "subject": "patient",
+      "topic": "nighttime_behavior",
+      "description": "She woke and walked around the house on 3 of the 7 nights this week.",
+      "evidence_quote": "She woke and walked around the house on 3 of the 7 nights this week.",
+      "report_type": "caregiver_observation",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-NIGHT-CONFIRM-4"
+      ],
+      "change_from_baseline": "unknown",
+      "measure": {
+        "value": 3,
+        "numerator": 3,
+        "denominator": 7,
+        "unit": "affected_nights_per_observed_nights",
+        "value_status": "confirmed_reported_count"
+      },
+      "related_instrument_items": [
+        "NPIQ-11"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "OBS-SUPPORT",
+      "record_type": "observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-SUPPORT"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-10",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "subject": "caregiver",
+      "topic": "support_request",
+      "description": "Caregiver asks for reporting support",
+      "evidence_quote": "I feel tired and would like someone from the care team to help me understand what to report.",
+      "report_type": "caregiver_self_report",
+      "confirmation_status": "explicit_request",
+      "measure": null,
+      "official_instrument_response": false
+    }
+  ],
+  "activity_records": [
+    {
+      "record_id": "ACTREC-CHESS-1",
+      "record_type": "activity_observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-ACT-CHESS-1",
+        "EV-ACT-CONFIRM-CHESS-1"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "activity_id": "ACT-CHESS",
+      "subject": "patient",
+      "attempt_status": "attempted",
+      "participation": "participated",
+      "enjoyment": "yes",
+      "ability": "needs_assistance",
+      "reason_reported": "reminders_reported",
+      "evidence_quote": "She played chess with help and enjoyed it.",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-ACT-CONFIRM-CHESS-1"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "ACTREC-CHESS-2",
+      "record_type": "activity_observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-ACT-CHESS-2",
+        "EV-ACT-CONFIRM-CHESS-2"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-20",
+        "end_date": "2026-09-26",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "activity_id": "ACT-CHESS",
+      "subject": "patient",
+      "attempt_status": "not_attempted",
+      "participation": "not_attempted",
+      "enjoyment": "unknown",
+      "ability": "unknown",
+      "reason_reported": "lack_of_opportunity",
+      "evidence_quote": "She did not play chess because nobody was available to play with her.",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-ACT-CONFIRM-CHESS-2"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "ACTREC-CHESS-3",
+      "record_type": "activity_observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-ACT-CHESS-3",
+        "EV-ACT-CONFIRM-CHESS-3"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-27",
+        "end_date": "2026-10-03",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "activity_id": "ACT-CHESS",
+      "subject": "patient",
+      "attempt_status": "not_attempted",
+      "participation": "not_attempted",
+      "enjoyment": "unknown",
+      "ability": "unknown",
+      "reason_reported": "unknown",
+      "evidence_quote": "She did not play chess this week. I am not sure why.",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-ACT-CONFIRM-CHESS-3"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "ACTREC-CHESS-4",
+      "record_type": "activity_observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-ACT-CHESS-4",
+        "EV-ACT-CONFIRM-CHESS-4"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "activity_id": "ACT-CHESS",
+      "subject": "patient",
+      "attempt_status": "attempted",
+      "participation": "participated",
+      "enjoyment": "yes",
+      "ability": "needs_assistance",
+      "reason_reported": "reminders_reported",
+      "evidence_quote": "She played chess with my help. I had to remind her how the pieces move. She enjoyed playing.",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-ACT-CONFIRM-CHESS-4"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "ACTREC-GARDEN-1",
+      "record_type": "activity_observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-ACT-GARDEN-1",
+        "EV-ACT-CONFIRM-GARDEN-1"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-13",
+        "end_date": "2026-09-19",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "activity_id": "ACT-GARDEN",
+      "subject": "patient",
+      "attempt_status": "attempted",
+      "participation": "participated",
+      "enjoyment": "yes",
+      "ability": "independent",
+      "reason_reported": null,
+      "evidence_quote": "She gardened by herself and enjoyed it.",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-ACT-CONFIRM-GARDEN-1"
+      ],
+      "official_instrument_response": false
+    },
+    {
+      "record_id": "ACTREC-GARDEN-2",
+      "record_type": "activity_observation",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-ACT-GARDEN-2",
+        "EV-ACT-CONFIRM-GARDEN-2"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_confirmed",
+      "version": 1,
+      "supersedes_record_id": null,
+      "activity_id": "ACT-GARDEN",
+      "subject": "patient",
+      "attempt_status": "attempted",
+      "participation": "participated",
+      "enjoyment": "yes",
+      "ability": "needs_assistance",
+      "reason_reported": "physical_discomfort_reported",
+      "evidence_quote": "She enjoyed gardening, but I helped because her knee was sore.",
+      "confirmation_status": "confirmed",
+      "confirmation_record_ids": [
+        "EV-ACT-CONFIRM-GARDEN-2"
+      ],
+      "official_instrument_response": false
+    }
+  ],
+  "assessments": [
+    {
+      "record_id": "ASMT-AD8-SEP",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-AD8-SEP"
+      ],
+      "recorded_at": "2026-09-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-09-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "AD8",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-09-01",
+      "completion_status": "complete",
+      "missing_item_ids": [],
+      "review_status": "not_clinically_reviewed",
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "item_responses": [
+        {
+          "item_id": "AD8-01",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-02",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-03",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "YES_CHANGE",
+          "answer_value": 1
+        },
+        {
+          "item_id": "AD8-04",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-05",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-06",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "YES_CHANGE",
+          "answer_value": 1
+        },
+        {
+          "item_id": "AD8-07",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-08",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "YES_CHANGE",
+          "answer_value": 1
+        }
+      ],
+      "total_score": 3,
+      "subscores": {}
+    },
+    {
+      "record_id": "ASMT-AD8-OCT",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-AD8-OCT"
+      ],
+      "recorded_at": "2026-10-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-10-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "AD8",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-10-01",
+      "completion_status": "complete",
+      "missing_item_ids": [],
+      "review_status": "not_clinically_reviewed",
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "item_responses": [
+        {
+          "item_id": "AD8-01",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-02",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-03",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "YES_CHANGE",
+          "answer_value": 1
+        },
+        {
+          "item_id": "AD8-04",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-05",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-06",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "YES_CHANGE",
+          "answer_value": 1
+        },
+        {
+          "item_id": "AD8-07",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "NO_CHANGE",
+          "answer_value": 0
+        },
+        {
+          "item_id": "AD8-08",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-AD8-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "YES_CHANGE",
+          "answer_value": 1
+        }
+      ],
+      "total_score": 3,
+      "subscores": {}
+    },
+    {
+      "record_id": "ASMT-FAQ-SEP",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-FAQ-SEP"
+      ],
+      "recorded_at": "2026-09-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-09-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "FAQ",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-09-01",
+      "completion_status": "complete",
+      "missing_item_ids": [],
+      "review_status": "not_clinically_reviewed",
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "item_responses": [
+        {
+          "item_id": "FAQ-01",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-02",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-03",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-04",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-05",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-06",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-07",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-08",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-09",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-10",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        }
+      ],
+      "total_score": 12,
+      "subscores": {}
+    },
+    {
+      "record_id": "ASMT-FAQ-OCT",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-FAQ-OCT"
+      ],
+      "recorded_at": "2026-10-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-10-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "FAQ",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-10-01",
+      "completion_status": "complete",
+      "missing_item_ids": [],
+      "review_status": "not_clinically_reviewed",
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "item_responses": [
+        {
+          "item_id": "FAQ-01",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-02",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-03",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-04",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-05",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-06",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-07",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "DIFFICULTY_INDEPENDENT",
+          "answer_value": 1
+        },
+        {
+          "item_id": "FAQ-08",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-09",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        },
+        {
+          "item_id": "FAQ-10",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-FAQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "REQUIRES_ASSISTANCE",
+          "answer_value": 2
+        }
+      ],
+      "total_score": 18,
+      "subscores": {}
+    },
+    {
+      "record_id": "ASMT-NPIQ-SEP",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-NPIQ-SEP"
+      ],
+      "recorded_at": "2026-09-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-08-01",
+        "end_date": "2026-08-31",
+        "precision": "day",
+        "basis": "preceding_month"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "NPIQ",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-09-01",
+      "completion_status": "complete",
+      "missing_item_ids": [],
+      "review_status": "not_clinically_reviewed",
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "item_responses": [
+        {
+          "item_id": "NPIQ-01",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "NO",
+          "severity": 0,
+          "distress": 0,
+          "absence_zero_is_computed": true
+        },
+        {
+          "item_id": "NPIQ-02",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "NO",
+          "severity": 0,
+          "distress": 0,
+          "absence_zero_is_computed": true
+        },
+        {
+          "item_id": "NPIQ-03",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 2,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-04",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 1,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-05",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 2,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-06",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "NO",
+          "severity": 0,
+          "distress": 0,
+          "absence_zero_is_computed": true
+        },
+        {
+          "item_id": "NPIQ-07",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 1,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-08",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "NO",
+          "severity": 0,
+          "distress": 0,
+          "absence_zero_is_computed": true
+        },
+        {
+          "item_id": "NPIQ-09",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 2,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-10",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 1,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-11",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 2,
+          "distress": 5,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-12",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 2,
+          "absence_zero_is_computed": false
+        }
+      ],
+      "total_score": null,
+      "subscores": {
+        "severity": 9,
+        "distress": 16
+      }
+    },
+    {
+      "record_id": "ASMT-NPIQ-OCT",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-NPIQ-OCT"
+      ],
+      "recorded_at": "2026-10-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-09-30",
+        "precision": "day",
+        "basis": "preceding_month"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "NPIQ",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-10-01",
+      "completion_status": "complete",
+      "missing_item_ids": [],
+      "review_status": "not_clinically_reviewed",
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "item_responses": [
+        {
+          "item_id": "NPIQ-01",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "NO",
+          "severity": 0,
+          "distress": 0,
+          "absence_zero_is_computed": true
+        },
+        {
+          "item_id": "NPIQ-02",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "NO",
+          "severity": 0,
+          "distress": 0,
+          "absence_zero_is_computed": true
+        },
+        {
+          "item_id": "NPIQ-03",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 2,
+          "distress": 3,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-04",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 2,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-05",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 2,
+          "distress": 3,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-06",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "NO",
+          "severity": 0,
+          "distress": 0,
+          "absence_zero_is_computed": true
+        },
+        {
+          "item_id": "NPIQ-07",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 2,
+          "distress": 3,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-08",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "NO",
+          "severity": 0,
+          "distress": 0,
+          "absence_zero_is_computed": true
+        },
+        {
+          "item_id": "NPIQ-09",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 3,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-10",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 1,
+          "distress": 2,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-11",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 3,
+          "distress": 5,
+          "absence_zero_is_computed": false
+        },
+        {
+          "item_id": "NPIQ-12",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-NPIQ-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "present": "YES",
+          "severity": 2,
+          "distress": 3,
+          "absence_zero_is_computed": false
+        }
+      ],
+      "total_score": null,
+      "subscores": {
+        "severity": 14,
+        "distress": 24
+      }
+    },
+    {
+      "record_id": "ASMT-ZBI22-SEP",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-ZBI22-SEP"
+      ],
+      "recorded_at": "2026-09-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-09-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "ZBI22",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-09-01",
+      "completion_status": "complete",
+      "missing_item_ids": [],
+      "review_status": "not_clinically_reviewed",
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "item_responses": [
+        {
+          "item_id": "ZBI-01",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-02",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-03",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-04",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-05",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-06",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-07",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-08",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-09",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-10",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-11",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-12",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-13",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-14",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-15",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-16",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-17",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-18",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-19",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-20",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-21",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        },
+        {
+          "item_id": "ZBI-22",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-SEP"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "RARELY",
+          "answer_value": 1
+        }
+      ],
+      "total_score": 31,
+      "subscores": {}
+    },
+    {
+      "record_id": "ASMT-ZBI22-OCT",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-ZBI22-OCT"
+      ],
+      "recorded_at": "2026-10-01T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": "2026-10-01",
+        "precision": "unknown",
+        "basis": "registered_instrument_context"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "ZBI22",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-10-01",
+      "completion_status": "complete",
+      "missing_item_ids": [],
+      "review_status": "not_clinically_reviewed",
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "item_responses": [
+        {
+          "item_id": "ZBI-01",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "QUITE_FREQUENTLY",
+          "answer_value": 3
+        },
+        {
+          "item_id": "ZBI-02",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "QUITE_FREQUENTLY",
+          "answer_value": 3
+        },
+        {
+          "item_id": "ZBI-03",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "QUITE_FREQUENTLY",
+          "answer_value": 3
+        },
+        {
+          "item_id": "ZBI-04",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "QUITE_FREQUENTLY",
+          "answer_value": 3
+        },
+        {
+          "item_id": "ZBI-05",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "QUITE_FREQUENTLY",
+          "answer_value": 3
+        },
+        {
+          "item_id": "ZBI-06",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-07",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-08",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-09",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-10",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-11",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-12",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-13",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-14",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-15",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-16",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-17",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-18",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-19",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-20",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-21",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        },
+        {
+          "item_id": "ZBI-22",
+          "answer_status": "valid",
+          "source_record_ids": [
+            "FORM-ZBI22-OCT"
+          ],
+          "respondent_id": "C-DEMO-01",
+          "answer_code": "SOMETIMES",
+          "answer_value": 2
+        }
+      ],
+      "total_score": 49,
+      "subscores": {}
+    },
+    {
+      "record_id": "ASMT-NPIQ-PARTIAL",
+      "record_type": "assessment",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "synthetic_form",
+      "source_record_ids": [
+        "FORM-NPIQ-PARTIAL"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-10",
+        "end_date": "2026-10-09",
+        "precision": "day",
+        "basis": "preceding_month"
+      },
+      "verification_status": "synthetic_item_fixture",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "NPIQ",
+      "instrument_version": "lucidity-project-registry-2026-10-10",
+      "instrument_language": "en",
+      "administration_mode": "synthetic_fixture",
+      "scoring_version": "deterministic-demo-v1",
+      "assessment_date": "2026-10-10",
+      "completion_status": "incomplete",
+      "total_score": null,
+      "subscores": {
+        "severity": null,
+        "distress": null
+      },
+      "provenance": "synthetic_item_fixture",
+      "license_status": "not_asserted_demo_only",
+      "review_status": "not_clinically_reviewed",
+      "missing_item_ids": [
+        "NPIQ-01",
+        "NPIQ-02",
+        "NPIQ-03",
+        "NPIQ-04",
+        "NPIQ-05",
+        "NPIQ-06",
+        "NPIQ-07",
+        "NPIQ-08",
+        "NPIQ-09",
+        "NPIQ-10",
+        "NPIQ-12"
+      ],
+      "item_responses": [
+        {
+          "item_id": "NPIQ-01",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-02",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-03",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-04",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-05",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-06",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-07",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-08",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-09",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-10",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        },
+        {
+          "item_id": "NPIQ-11",
+          "present": "YES",
+          "severity": 2,
+          "distress": 4,
+          "answer_status": "valid",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": [
+            "FORM-NPIQ-PARTIAL"
+          ]
+        },
+        {
+          "item_id": "NPIQ-12",
+          "present": null,
+          "severity": null,
+          "distress": null,
+          "answer_status": "not_asked",
+          "respondent_id": "C-DEMO-01",
+          "source_record_ids": []
+        }
+      ]
+    }
+  ],
+  "score_comparisons": [
+    {
+      "record_id": "CMP-AD8-total_score",
+      "record_type": "score_comparison",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "ASMT-AD8-SEP",
+        "ASMT-AD8-OCT"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-10-01",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "AD8",
+      "subscore": "total_score",
+      "previous_value": 3,
+      "current_value": 3,
+      "delta_points": 0,
+      "previous_date": "2026-09-01",
+      "current_date": "2026-10-01",
+      "comparability": "comparable",
+      "basis": "same_demo_instrument_version_mode_and_respondent",
+      "interpretation": "descriptive_difference_only"
+    },
+    {
+      "record_id": "CMP-FAQ-total_score",
+      "record_type": "score_comparison",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "ASMT-FAQ-SEP",
+        "ASMT-FAQ-OCT"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-10-01",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "FAQ",
+      "subscore": "total_score",
+      "previous_value": 12,
+      "current_value": 18,
+      "delta_points": 6,
+      "previous_date": "2026-09-01",
+      "current_date": "2026-10-01",
+      "comparability": "comparable",
+      "basis": "same_demo_instrument_version_mode_and_respondent",
+      "interpretation": "descriptive_difference_only"
+    },
+    {
+      "record_id": "CMP-NPIQ-severity",
+      "record_type": "score_comparison",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "ASMT-NPIQ-SEP",
+        "ASMT-NPIQ-OCT"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-10-01",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "NPIQ",
+      "subscore": "severity",
+      "previous_value": 9,
+      "current_value": 14,
+      "delta_points": 5,
+      "previous_date": "2026-09-01",
+      "current_date": "2026-10-01",
+      "comparability": "comparable",
+      "basis": "same_demo_instrument_version_mode_and_respondent",
+      "interpretation": "descriptive_difference_only"
+    },
+    {
+      "record_id": "CMP-NPIQ-distress",
+      "record_type": "score_comparison",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "ASMT-NPIQ-SEP",
+        "ASMT-NPIQ-OCT"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-10-01",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "NPIQ",
+      "subscore": "distress",
+      "previous_value": 16,
+      "current_value": 24,
+      "delta_points": 8,
+      "previous_date": "2026-09-01",
+      "current_date": "2026-10-01",
+      "comparability": "comparable",
+      "basis": "same_demo_instrument_version_mode_and_respondent",
+      "interpretation": "descriptive_difference_only"
+    },
+    {
+      "record_id": "CMP-ZBI22-total_score",
+      "record_type": "score_comparison",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "ASMT-ZBI22-SEP",
+        "ASMT-ZBI22-OCT"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-10-01",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "instrument_code": "ZBI22",
+      "subscore": "total_score",
+      "previous_value": 31,
+      "current_value": 49,
+      "delta_points": 18,
+      "previous_date": "2026-09-01",
+      "current_date": "2026-10-01",
+      "comparability": "comparable",
+      "basis": "same_demo_instrument_version_mode_and_respondent",
+      "interpretation": "descriptive_difference_only"
+    }
+  ],
+  "report_example": {
+    "record_id": "REPORT-DEMO-01",
+    "record_type": "ai_report_example",
+    "schema_version": "1.0",
+    "patient_id": "P-DEMO-01",
+    "respondent_id": null,
+    "care_team_id": "TEAM-DEMO-01",
+    "data_kind": "synthetic",
+    "source_type": "application_derived",
+    "source_record_ids": [
+      "CMP-AD8-total_score",
+      "CMP-FAQ-total_score",
+      "CMP-NPIQ-severity",
+      "CMP-NPIQ-distress",
+      "CMP-ZBI22-total_score",
+      "OBS-NIGHT-1",
+      "OBS-NIGHT-2",
+      "OBS-NIGHT-3",
+      "OBS-NIGHT-4",
+      "OBS-SUPPORT",
+      "ACTREC-CHESS-1",
+      "ACTREC-CHESS-2",
+      "ACTREC-CHESS-3",
+      "ACTREC-CHESS-4",
+      "ACTREC-GARDEN-1",
+      "ACTREC-GARDEN-2",
+      "ASMT-NPIQ-PARTIAL"
+    ],
+    "recorded_at": "2026-10-10T09:00:00-04:00",
+    "observed_period": {
+      "start_date": "2026-09-13",
+      "end_date": "2026-10-10",
+      "precision": "day",
+      "basis": "reported_interval"
+    },
+    "verification_status": "synthetic_record",
+    "version": 1,
+    "supersedes_record_id": null,
+    "review_status_at_generation": "awaiting_clinician_review",
+    "prompt_version": "lucidity-report-v1",
+    "model": "simulated_controlled_template",
+    "source_snapshot_version": "fixture-v1",
+    "output": {
+      "summary": {
+        "text": "Synthetic caregiver records describe ongoing nighttime disruption, some activity assistance, and continued gardening enjoyment. Complete assessment histories are supplied separately; the most recent NPI-Q is incomplete. The caregiver requests reporting support.",
+        "evidence_ids": [
+          "OBS-NIGHT-4",
+          "ACTREC-CHESS-4",
+          "ACTREC-GARDEN-2",
+          "ASMT-NPIQ-PARTIAL",
+          "OBS-SUPPORT"
+        ]
+      },
+      "domain_snapshots": [
+        {
+          "domain": "cognition",
+          "status": "insufficient_information",
+          "text": "AD8 total is unchanged between the two supplied synthetic assessments; broader cognitive status is not established by those scores.",
+          "evidence_ids": [
+            "CMP-AD8-total_score"
+          ]
+        },
+        {
+          "domain": "function",
+          "status": "reported_change",
+          "text": "Supplied FAQ total is higher; item detail and activity reports are available for review.",
+          "evidence_ids": [
+            "CMP-FAQ-total_score",
+            "ACTREC-CHESS-4"
+          ]
+        },
+        {
+          "domain": "behavior_sleep",
+          "status": "reported_change",
+          "text": "Reported nighttime counts vary and include an unknown week; the latest count is lower than the prior peak.",
+          "evidence_ids": [
+            "OBS-NIGHT-1",
+            "OBS-NIGHT-2",
+            "OBS-NIGHT-3",
+            "OBS-NIGHT-4"
+          ]
+        },
+        {
+          "domain": "activities_preferences",
+          "status": "reported_change",
+          "text": "Gardening enjoyment continues, with latest assistance attributed by the caregiver to a sore knee.",
+          "evidence_ids": [
+            "ACTREC-GARDEN-1",
+            "ACTREC-GARDEN-2"
+          ]
+        },
+        {
+          "domain": "caregiver_wellbeing",
+          "status": "reported_change",
+          "text": "Supplied ZBI total is higher, and the caregiver asks for reporting support.",
+          "evidence_ids": [
+            "CMP-ZBI22-total_score",
+            "OBS-SUPPORT"
+          ]
+        },
+        {
+          "domain": "data_completeness",
+          "status": "insufficient_information",
+          "text": "The October 10 NPI-Q has eleven unasked domains and no complete subscores.",
+          "evidence_ids": [
+            "ASMT-NPIQ-PARTIAL"
+          ]
+        }
+      ],
+      "claims": [
+        {
+          "claim_id": "CL-01",
+          "category": "observed_fact",
+          "domain": "behavior_sleep",
+          "text": "Primary caregiver reported affected nights of 2/7, unknown, 5/7, and 3/7 across four weekly windows; latest reporting is below the prior peak.",
+          "evidence_ids": [
+            "OBS-NIGHT-1",
+            "OBS-NIGHT-2",
+            "OBS-NIGHT-3",
+            "OBS-NIGHT-4"
+          ],
+          "observed_period": {
+            "start_date": "2026-09-13",
+            "end_date": "2026-10-10",
+            "precision": "day",
+            "basis": "reported_interval"
+          },
+          "provenance": "synthetic_ai_draft"
+        },
+        {
+          "claim_id": "CL-02",
+          "category": "observed_fact",
+          "domain": "activities_preferences",
+          "text": "Chess was not attempted in the second week because nobody was available, and was played with reminders in the latest week.",
+          "evidence_ids": [
+            "ACTREC-CHESS-2",
+            "ACTREC-CHESS-4"
+          ],
+          "observed_period": {
+            "start_date": "2026-09-13",
+            "end_date": "2026-10-10",
+            "precision": "day",
+            "basis": "reported_interval"
+          },
+          "provenance": "synthetic_ai_draft"
+        },
+        {
+          "claim_id": "CL-03",
+          "category": "observed_fact",
+          "domain": "activities_preferences",
+          "text": "Caregiver reports ongoing enjoyment of gardening; latest assistance was attributed by the caregiver to a sore knee.",
+          "evidence_ids": [
+            "ACTREC-GARDEN-1",
+            "ACTREC-GARDEN-2"
+          ],
+          "observed_period": {
+            "start_date": "2026-09-13",
+            "end_date": "2026-10-10",
+            "precision": "day",
+            "basis": "reported_interval"
+          },
+          "provenance": "synthetic_ai_draft"
+        },
+        {
+          "claim_id": "CL-04",
+          "category": "possible_association",
+          "domain": "function",
+          "text": "Reported assistance with chess and the higher supplied FAQ result may be relevant to the same functional review; the periods differ and no cause is established.",
+          "evidence_ids": [
+            "ACTREC-CHESS-4",
+            "CMP-FAQ-total_score"
+          ],
+          "observed_period": {
+            "start_date": "2026-09-13",
+            "end_date": "2026-10-10",
+            "precision": "day",
+            "basis": "reported_interval"
+          },
+          "provenance": "synthetic_ai_draft"
+        },
+        {
+          "claim_id": "CL-05",
+          "category": "missing_information",
+          "domain": "data_completeness",
+          "text": "Eleven domains are unasked in the October 10 NPI-Q; no complete total is available for that assessment.",
+          "evidence_ids": [],
+          "observed_period": {
+            "start_date": "2026-09-13",
+            "end_date": "2026-10-10",
+            "precision": "day",
+            "basis": "reported_interval"
+          },
+          "provenance": "synthetic_ai_draft",
+          "missing_fields": [
+            "NPIQ-01",
+            "NPIQ-02",
+            "NPIQ-03",
+            "NPIQ-04",
+            "NPIQ-05",
+            "NPIQ-06",
+            "NPIQ-07",
+            "NPIQ-08",
+            "NPIQ-09",
+            "NPIQ-10",
+            "NPIQ-12"
+          ],
+          "reviewed_record_ids": [
+            "ASMT-NPIQ-PARTIAL"
+          ]
+        },
+        {
+          "claim_id": "CL-06",
+          "category": "review_concern",
+          "domain": "caregiver_wellbeing",
+          "text": "The caregiver explicitly asks for help with reporting; the assigned reviewer should consider the request.",
+          "evidence_ids": [
+            "OBS-SUPPORT"
+          ],
+          "observed_period": {
+            "start_date": "2026-09-13",
+            "end_date": "2026-10-10",
+            "precision": "day",
+            "basis": "reported_interval"
+          },
+          "provenance": "synthetic_ai_draft"
+        }
+      ],
+      "score_references": [
+        "CMP-AD8-total_score",
+        "CMP-FAQ-total_score",
+        "CMP-NPIQ-severity",
+        "CMP-NPIQ-distress",
+        "CMP-ZBI22-total_score"
+      ],
+      "clarification_questions": [
+        {
+          "question": "When she played chess this week, which parts did she do independently and which required reminders?",
+          "missing_field": "independent_components",
+          "intended_respondent_id": "C-DEMO-01",
+          "evidence_ids": [
+            "ACTREC-CHESS-4"
+          ]
+        }
+      ],
+      "proposed_followups": [
+        {
+          "proposal_id": "PROP-DEMO-01",
+          "text": "Request clarification of reported chess assistance.",
+          "supporting_claim_ids": [
+            "CL-02",
+            "CL-04"
+          ],
+          "intended_recipient_ref": "RECIPIENT-DEMO-01",
+          "requires_clinician_approval": true
+        }
+      ],
+      "limitations": [
+        "All records are synthetic.",
+        "Weekly observations and monthly assessments cover different periods.",
+        "One weekly count is unknown.",
+        "No diagnosis or treatment effect is established."
+      ],
+      "validation_errors": []
+    }
+  },
+  "notification_examples": [
+    {
+      "record_id": "NOTIFY-CHANGED",
+      "record_type": "notification",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "CMP-FAQ-total_score",
+        "CMP-NPIQ-severity",
+        "CMP-NPIQ-distress",
+        "CMP-ZBI22-total_score"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "rule_id": "RULE-ANY-CHANGED-COMPLETE-SCORE-DEMO",
+      "rule_version": "demo-v1",
+      "priority": "review",
+      "priority_is_medically_validated": false,
+      "trigger_record_ids": [
+        "CMP-FAQ-total_score",
+        "CMP-NPIQ-severity",
+        "CMP-NPIQ-distress",
+        "CMP-ZBI22-total_score"
+      ],
+      "owner_id": "CLINICIAN-DEMO-01",
+      "due_at": null,
+      "status": "assigned",
+      "explanation": "Changed complete synthetic results are grouped for review; clinical significance is not assigned."
+    },
+    {
+      "record_id": "NOTIFY-DATA",
+      "record_type": "notification",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "ASMT-NPIQ-PARTIAL"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "rule_id": "RULE-INCOMPLETE-ASSESSMENT-DEMO",
+      "rule_version": "demo-v1",
+      "priority": "routine",
+      "priority_is_medically_validated": false,
+      "trigger_record_ids": [
+        "ASMT-NPIQ-PARTIAL"
+      ],
+      "owner_id": "CLINICIAN-DEMO-01",
+      "due_at": null,
+      "status": "assigned",
+      "explanation": "Incomplete NPI-Q needs remaining domain answers; no score-based urgency is inferred."
+    },
+    {
+      "record_id": "NOTIFY-SUPPORT",
+      "record_type": "notification",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "OBS-SUPPORT"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "rule_id": "RULE-EXPLICIT-SUPPORT-REQUEST-DEMO",
+      "rule_version": "demo-v1",
+      "priority": "review",
+      "priority_is_medically_validated": false,
+      "trigger_record_ids": [
+        "OBS-SUPPORT"
+      ],
+      "owner_id": "CLINICIAN-DEMO-01",
+      "due_at": null,
+      "status": "assigned",
+      "explanation": "Caregiver explicitly requested reporting support."
+    }
+  ],
+  "actions": [
+    {
+      "record_id": "ACTION-DEMO-01",
+      "record_type": "followup_action",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "application_derived",
+      "source_record_ids": [
+        "REPORT-DEMO-01",
+        "ACTREC-CHESS-4"
+      ],
+      "recorded_at": "2026-10-10T09:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "proposal_id": "PROP-DEMO-01",
+      "report_version": 1,
+      "message_version": 1,
+      "intended_recipient_ref": "RECIPIENT-DEMO-01",
+      "owner_id": "CLINICIAN-DEMO-01",
+      "due_at": "2026-10-12T17:00:00-04:00",
+      "current_status": "closed",
+      "approved_message": "Thanks for the update. When Mara played chess this week, which parts did she do by herself and which needed reminders?",
+      "reviewer_id": "CLINICIAN-DEMO-01",
+      "approved_at": "2026-10-10T10:00:00-04:00",
+      "dispatch_id": "DISPATCH-DEMO-01",
+      "updated_at": "2026-10-10T10:35:00-04:00",
+      "dispatch_idempotency_key": "ACTION-DEMO-01:v1:RECIPIENT-DEMO-01",
+      "delivery_state": "simulated_delivered",
+      "outcome": {
+        "status": "clarification_received",
+        "clinical_effect": "not_assessed"
+      }
+    }
+  ],
+  "caregiver_responses": [
+    {
+      "record_id": "REPLY-DEMO-01",
+      "record_type": "caregiver_followup_response",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": "C-DEMO-01",
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "caregiver_text",
+      "source_record_ids": [
+        "EV-FOLLOWUP-REPLY",
+        "ACTION-DEMO-01"
+      ],
+      "recorded_at": "2026-10-10T10:30:00-04:00",
+      "observed_period": {
+        "start_date": "2026-10-04",
+        "end_date": "2026-10-10",
+        "precision": "day",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_caregiver_report",
+      "version": 1,
+      "supersedes_record_id": null,
+      "action_id": "ACTION-DEMO-01",
+      "received_at": "2026-10-10T10:30:00-04:00",
+      "response_kind": "clarification",
+      "reported_action_completion": "clarification_answered",
+      "barriers": [],
+      "outcome_status": "information_received",
+      "clinical_improvement": "not_assessed"
+    }
+  ],
+  "review_and_action_events": [
+    {
+      "record_id": "REVIEW-REPORT",
+      "record_type": "review_or_action_event",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "simulated_review",
+      "source_record_ids": [
+        "REPORT-DEMO-01"
+      ],
+      "recorded_at": "2026-10-10T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "event_type": "report_approved",
+      "actor_id": "CLINICIAN-DEMO-01",
+      "target_version": 1,
+      "message_version": null
+    },
+    {
+      "record_id": "REVIEW-ACTION",
+      "record_type": "review_or_action_event",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "simulated_review",
+      "source_record_ids": [
+        "ACTION-DEMO-01",
+        "REPORT-DEMO-01"
+      ],
+      "recorded_at": "2026-10-10T10:00:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "event_type": "exact_message_approved",
+      "actor_id": "CLINICIAN-DEMO-01",
+      "target_version": 1,
+      "message_version": 1
+    },
+    {
+      "record_id": "EVENT-QUEUED",
+      "record_type": "review_or_action_event",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "simulated_review",
+      "source_record_ids": [
+        "ACTION-DEMO-01"
+      ],
+      "recorded_at": "2026-10-10T10:01:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "event_type": "message_queued",
+      "actor_id": "SYSTEM-DEMO-01",
+      "target_version": 1,
+      "message_version": null
+    },
+    {
+      "record_id": "EVENT-SENT",
+      "record_type": "review_or_action_event",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "simulated_review",
+      "source_record_ids": [
+        "ACTION-DEMO-01"
+      ],
+      "recorded_at": "2026-10-10T10:02:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "event_type": "simulated_message_sent",
+      "actor_id": "SYSTEM-DEMO-01",
+      "target_version": 1,
+      "message_version": null
+    },
+    {
+      "record_id": "EVENT-REPLY",
+      "record_type": "review_or_action_event",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "simulated_review",
+      "source_record_ids": [
+        "ACTION-DEMO-01",
+        "REPLY-DEMO-01"
+      ],
+      "recorded_at": "2026-10-10T10:30:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "event_type": "response_received",
+      "actor_id": "SYSTEM-DEMO-01",
+      "target_version": 1,
+      "message_version": null
+    },
+    {
+      "record_id": "EVENT-CLOSED",
+      "record_type": "review_or_action_event",
+      "schema_version": "1.0",
+      "patient_id": "P-DEMO-01",
+      "respondent_id": null,
+      "care_team_id": "TEAM-DEMO-01",
+      "data_kind": "synthetic",
+      "source_type": "simulated_review",
+      "source_record_ids": [
+        "ACTION-DEMO-01",
+        "REPLY-DEMO-01"
+      ],
+      "recorded_at": "2026-10-10T10:35:00-04:00",
+      "observed_period": {
+        "start_date": null,
+        "end_date": null,
+        "precision": "unknown",
+        "basis": "reported_interval"
+      },
+      "verification_status": "synthetic_record",
+      "version": 1,
+      "supersedes_record_id": null,
+      "event_type": "clarification_action_closed",
+      "actor_id": "CLINICIAN-DEMO-01",
+      "target_version": 1,
+      "message_version": null
+    }
+  ],
+  "demo_actors": [
+    {
+      "actor_id": "CLINICIAN-DEMO-01",
+      "role": "simulated_authorized_clinician",
+      "patient_ids": [
+        "P-DEMO-01"
+      ]
+    },
+    {
+      "actor_id": "SYSTEM-DEMO-01",
+      "role": "simulated_dispatch_service",
+      "patient_ids": [
+        "P-DEMO-01"
+      ]
+    }
+  ]
+}
