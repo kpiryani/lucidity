@@ -5,8 +5,12 @@
 
 ### Three layers
 
+<div align="center">
+
 **💬 Connect** → **🧠 Intelligence** → **👩‍⚕️ Care**
 
 | 💬 Connect | 🧠 Intelligence | 👩‍⚕️ Care |
 |:---:|:---:|:---:|
 | talks with the family | understands what's happening | the clinician decides |
+
+</div>
