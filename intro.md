@@ -5,11 +5,7 @@
 
 ### Three layers
 
-```mermaid
-flowchart LR
-    A["💬 Connect"] --> B["🧠 Intelligence"] --> C["👩‍⚕️ Care"]
-    C --> A
-```
+**💬 Connect** → **🧠 Intelligence** → **👩‍⚕️ Care**
 
 | 💬 Connect | 🧠 Intelligence | 👩‍⚕️ Care |
 |:---:|:---:|:---:|
