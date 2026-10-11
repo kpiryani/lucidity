@@ -15,7 +15,8 @@ import { ToolChoiceViolationError, generateText, stepCountIs, tool, type ModelMe
 import { z } from "zod";
 import { sessionHeaders, type LlmConfig } from "./llm.ts";
 import { SYSTEM_PROMPT, contextBlock } from "./prompt.ts";
-import { assessmentContext, recordOffer } from "./questionnaire.ts";
+import type { Wordings } from "./instruments/index.ts";
+import { assessmentContext, cuedInstrument, recordOffer } from "./questionnaire.ts";
 import { GENERAL_TOPICS, NPI_DOMAINS, type Store } from "./store.ts";
 
 const MAX_STEPS = 4;
@@ -34,8 +35,8 @@ export interface AgentDeps {
   timeoutMs?: number;
   /** Per-step diagnostics (tools called, timing, tokens). */
   onStep?: (info: StepInfo) => void;
-  /** Whether questionnaire wording is installed, so check-ins can be offered. */
-  questionnairesAvailable?: boolean;
+  /** Installed questionnaire wording; check-ins can only be offered for these. */
+  wordings?: Wordings;
 }
 
 export interface StepInfo {
@@ -120,16 +121,17 @@ function buildTools(deps: AgentDeps, caregiver: string, state: TurnState) {
   return {
     offer_questionnaire: tool({
       description:
-        "Offer the caregiver the NPI-Q check-in (12 standard questions about the past month, about 5 minutes). Call this, then ask in your reply whether they'd like to do it, ending with 'Reply YES or NO.' Lucidity takes over and asks the questions if they say yes.",
+        'Offer a standard check-in. "NPI-Q": 12 questions about the patient\'s behavior and mood over the past month. "ZBI": 12 questions about how caregiving has been affecting the caregiver. Call this, then ask in your reply whether they\'d like to do it, ending with "Reply YES or NO." Lucidity takes over and asks the questions if they say yes.',
       inputSchema: z.object({
+        instrument: z.enum(["NPI-Q", "ZBI"]),
         patient_label: z.string().min(1).describe('How the caregiver refers to the patient, e.g. "Dad", "Mom", "my husband".'),
-        reason: z.string().min(1).describe("The cue that prompted the offer, e.g. 'several evening behavior reports this week'."),
+        reason: z.string().min(1).describe("The cue that prompted the offer."),
       }),
       execute: async (input) => {
-        if (!deps.questionnairesAvailable) return { ok: false, error: "Check-ins aren't available right now. Don't offer one." };
-        const result = await recordOffer(store, caregiver, input.patient_label, deps.now?.() ?? new Date());
+        if (!deps.wordings?.[input.instrument]) return { ok: false, error: "That check-in isn't available. Don't offer it." };
+        const result = await recordOffer(store, caregiver, input.patient_label, deps.now?.() ?? new Date(), input.instrument);
         return result.ok
-          ? { ok: true, note: "Offer recorded. In your reply, briefly invite them (about 12 questions, ~5 minutes, about the past month, shared with the care team) and end with 'Reply YES or NO.'" }
+          ? { ok: true, note: "Offer recorded. In your reply, briefly invite them (12 short questions, about 5 minutes, shared with the care team) and end with 'Reply YES or NO.'" }
           : { ok: false, error: `Don't offer it. ${result.reason}` };
       },
     }),
@@ -312,8 +314,9 @@ export async function runAgent(
   const messages: ModelMessage[] = history.map((turn) => ({ role: turn.role, content: turn.text }));
   messages.push({ role: "user", content: text });
 
-  const checkIns = deps.questionnairesAvailable
-    ? `# Check-ins\n${assessmentContext(deps.store, caregiver, deps.store.caregiver(caregiver), now)}`
+  const hasCheckIns = !!(deps.wordings?.["NPI-Q"] || deps.wordings?.ZBI);
+  const checkIns = hasCheckIns
+    ? `# Check-ins\n${assessmentContext(deps.store, caregiver, deps.store.caregiver(caregiver), now, deps.wordings!)}`
     : "# Check-ins\n- Not available; don't offer one.";
   const system = [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), checkIns, options.note]
     .filter(Boolean)
@@ -380,10 +383,11 @@ export async function runAgent(
   // Safety net: the model sometimes invites a check-in without calling
   // offer_questionnaire. Record the offer so the caregiver's YES starts it.
   const caregiverState = deps.store.caregiver(caregiver);
-  if (reply && deps.questionnairesAvailable && invitesCheckIn(reply) && !caregiverState.pendingOffer) {
+  if (reply && hasCheckIns && invitesCheckIn(reply) && !caregiverState.pendingOffer) {
     const label =
       caregiverState.patientLabel ?? guessPatientLabel([...state.recentCaregiverText, reply]) ?? "your loved one";
-    const offered = await recordOffer(deps.store, caregiver, label, now);
+    const code = cuedInstrument(deps.store, caregiver, deps.wordings!, now)?.code ?? (deps.wordings?.["NPI-Q"] ? "NPI-Q" : "ZBI");
+    const offered = await recordOffer(deps.store, caregiver, label, now, code);
     deps.onStep?.({ step: ++stepCount, ms: 0, finishReason: `offer-recorded:${offered.ok}`, tools: [], outputTokens: 0, reasoningChars: 0 });
   }
 

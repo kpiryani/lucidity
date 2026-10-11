@@ -12,6 +12,9 @@
 
 import { readFile } from "node:fs/promises";
 import type { NpiDomain } from "../store.ts";
+import { latestResponses, type AnswerStatus, type ItemResponse, type Part } from "./types.ts";
+
+export type { AnswerStatus };
 
 export const NPIQ_SCORING_VERSION = "npiq-1.0";
 
@@ -31,7 +34,7 @@ export const NPIQ_ITEMS = [
 ] as const satisfies ReadonlyArray<{ id: string; domain: NpiDomain }>;
 
 export type NpiqItemId = (typeof NPIQ_ITEMS)[number]["id"];
-export type NpiqPart = "presence" | "severity" | "distress";
+export type NpiqPart = Extract<Part, "presence" | "severity" | "distress">;
 
 export interface NpiqWording {
   instrument: string;
@@ -58,22 +61,8 @@ export async function loadNpiqWording(path = "data/instruments/npiq.local.json")
   }
 }
 
-export type AnswerStatus = "valid" | "unknown" | "skipped" | "not_asked";
-
-export interface NpiqResponse {
-  itemId: NpiqItemId;
-  part: NpiqPart;
-  /** The exact text sent to the caregiver for this prompt. */
-  questionText: string;
-  /** The caregiver's raw reply (null when not asked). */
-  rawReply: string | null;
-  /** presence: 1 = yes, 0 = no. severity: 1–3. distress: 0–5. null when not valid. */
-  value: number | null;
-  status: AnswerStatus;
-  /** How the reply was interpreted: deterministic parse or LLM. */
-  interpretedBy: "rule" | "llm" | "system";
-  recordedAt: string;
-}
+/** @deprecated alias kept for readability in NPI-Q code. */
+export type NpiqResponse = ItemResponse;
 
 export interface NpiqScores {
   scoringVersion: string;
@@ -84,20 +73,13 @@ export interface NpiqScores {
   symptomsPresent: number;
   /** Domain-level results for answered items. */
   domains: Array<{ itemId: NpiqItemId; present: boolean | null; severity: number | null; distress: number | null }>;
-  missingItemIds: NpiqItemId[];
+  missingItemIds: string[];
 }
 
-/** Latest response per (item, part); later answers supersede earlier ones. */
-function latest(responses: NpiqResponse[]): Map<string, NpiqResponse> {
-  const map = new Map<string, NpiqResponse>();
-  for (const r of responses) map.set(`${r.itemId}:${r.part}`, r);
-  return map;
-}
-
-export function scoreNpiq(responses: NpiqResponse[]): NpiqScores {
-  const byKey = latest(responses);
+export function scoreNpiq(responses: ItemResponse[]): NpiqScores {
+  const byKey = latestResponses(responses);
   const domains: NpiqScores["domains"] = [];
-  const missing: NpiqItemId[] = [];
+  const missing: string[] = [];
 
   for (const { id } of NPIQ_ITEMS) {
     const presence = byKey.get(`${id}:presence`);

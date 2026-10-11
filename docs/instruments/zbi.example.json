@@ -1,0 +1,52 @@
+{
+  "instrument": "ZBI",
+  "version": "Zarit Burden Interview, items 1-12 of the 22-item form (partial)",
+  "source": "Copy the wording from your licensed ZBI PDF into data/instruments/zbi.local.json (git-ignored). Never commit the real wording to this public repo.",
+  "notice": "Zarit Burden Interview.",
+  "instructions": "<instructions text>",
+  "scale": {
+    "0": "<scale label from the PDF>",
+    "1": "<scale label from the PDF>",
+    "2": "<scale label from the PDF>",
+    "3": "<scale label from the PDF>",
+    "4": "<scale label from the PDF>"
+  },
+  "items": {
+    "ZBI-01": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-02": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-03": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-04": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-05": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-06": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-07": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-08": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-09": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-10": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-11": {
+      "question": "<question text from the PDF>"
+    },
+    "ZBI-12": {
+      "question": "<question text from the PDF>"
+    }
+  }
+}

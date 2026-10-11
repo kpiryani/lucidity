@@ -1,33 +1,31 @@
-// Questionnaire mode: deterministic, verbatim administration of the NPI-Q.
-// The AI conversation hands off here (after the caregiver accepts an offer);
-// this code asks one prompt at a time using the exact wording, stores each
-// answer with the text that was shown, scores in code, then hands back.
+// Questionnaire mode: deterministic, verbatim administration of standardized
+// questionnaires (NPI-Q, ZBI items 1–12). The AI conversation hands off here
+// after the caregiver accepts an offer; this code asks one prompt at a time
+// using the exact wording, stores each answer with the text that was shown,
+// scores in code, then hands back to the AI.
 //
 // Functions return the messages to send; index.ts does the sending.
 
 import { randomUUID } from "node:crypto";
 import type { Interpretation } from "./answers.ts";
 import { parseAnswer, type Parsed } from "./answers.ts";
-import {
-  NPIQ_ITEMS,
-  scoreNpiq,
-  type NpiqPart,
-  type NpiqResponse,
-  type NpiqWording,
-} from "./instruments/npiq.ts";
+import { INSTRUMENTS, availableInstruments, type Instrument, type Wordings } from "./instruments/index.ts";
+import type { InstrumentCode, ItemResponse, Part } from "./instruments/types.ts";
 import type { Assessment, CaregiverState, Store } from "./store.ts";
 
-/** Don't offer the NPI-Q again within its one-month recall period. */
-export const NPIQ_REPEAT_DAYS = 28;
-/** After a declined offer, wait this long before offering again. */
+/** After a declined offer, wait this long before offering it again. */
 export const OFFER_DECLINE_COOLDOWN_DAYS = 7;
+/** NPI-Q cue: different symptom domains reported in the past 7 days. */
+export const CUE_MIN_DOMAINS = 2;
+/** ZBI cue: caregiver-distress rating at or above this on any recent observation. */
+export const CUE_HIGH_DISTRESS = 4;
 const MAX_UNCLEAR = 2;
 
 export interface QuestionnaireDeps {
   store: Store;
-  wording: NpiqWording;
+  wordings: Wordings;
   /** LLM fallback for replies rules can't parse (optional). */
-  interpret?: (part: NpiqPart, questionText: string, reply: string) => Promise<Interpretation>;
+  interpret?: (part: Part, questionText: string, reply: string) => Promise<Interpretation>;
   now?: () => Date;
 }
 
@@ -40,38 +38,56 @@ const YES = /^(y|yes|yeah|yea|yep|yup|sure|ok|okay|sounds good|let's do it|lets 
 const NO = /^(n|no|nope|nah|no thanks|not now|maybe later|later)[.!]*$/i;
 
 const clean = (text: string) => text.trim().replace(/[‘’]/g, "'");
+const instrumentOf = (a: Assessment): Instrument => INSTRUMENTS[a.instrument];
 
 // ---------------------------------------------------------------- offering
 
 export type Eligibility = { ok: true } | { ok: false; reason: string };
 
-export function npiqEligibility(store: Store, caregiver: string, now = new Date()): Eligibility {
+export function eligibility(store: Store, caregiver: string, code: InstrumentCode, now = new Date()): Eligibility {
+  const instrument = INSTRUMENTS[code];
   const state = store.caregiver(caregiver);
   const active = store.assessment(state.activeAssessmentId);
   if (active) {
-    return { ok: false, reason: `A check-in is already ${active.status === "paused" ? "paused (they can reply RESUME)" : "in progress"}.` };
+    return {
+      ok: false,
+      reason: `A check-in is already ${active.status === "paused" ? "paused (they can reply RESUME)" : "in progress"}.`,
+    };
   }
-  const last = store.latestAssessment(caregiver, "NPI-Q");
-  if (last?.completedAt && now.getTime() - Date.parse(last.completedAt) < NPIQ_REPEAT_DAYS * DAY_MS) {
-    return { ok: false, reason: `The NPI-Q was already done on ${last.completedAt.slice(0, 10)}; it covers the past month, so don't offer it again yet.` };
+  const last = store.latestAssessment(caregiver, code);
+  if (last?.completedAt && now.getTime() - Date.parse(last.completedAt) < instrument.repeatDays * DAY_MS) {
+    return {
+      ok: false,
+      reason: `The ${instrument.name} was already done on ${last.completedAt.slice(0, 10)}; don't offer it again yet.`,
+    };
   }
-  const declined = state.declinedOffers?.["NPI-Q"];
+  const declined = state.declinedOffers?.[code];
   if (declined && now.getTime() - Date.parse(declined) < OFFER_DECLINE_COOLDOWN_DAYS * DAY_MS) {
-    return { ok: false, reason: `The caregiver declined the check-in on ${declined.slice(0, 10)}; don't offer again yet.` };
+    return { ok: false, reason: `The caregiver declined it on ${declined.slice(0, 10)}; don't offer again yet.` };
   }
   return { ok: true };
 }
 
+/** @deprecated use eligibility(store, caregiver, "NPI-Q") */
+export const npiqEligibility = (store: Store, caregiver: string, now = new Date()) =>
+  eligibility(store, caregiver, "NPI-Q", now);
+
 /** Records an offer so the caregiver's next YES/NO is routed here. */
-export async function recordOffer(store: Store, caregiver: string, patientLabel: string, now = new Date()): Promise<Eligibility> {
-  const eligibility = npiqEligibility(store, caregiver, now);
-  if (!eligibility.ok) return eligibility;
+export async function recordOffer(
+  store: Store,
+  caregiver: string,
+  patientLabel: string,
+  now = new Date(),
+  code: InstrumentCode = "NPI-Q",
+): Promise<Eligibility> {
+  const result = eligibility(store, caregiver, code, now);
+  if (!result.ok) return result;
   const state = store.caregiver(caregiver);
   state.patientLabel = patientLabel;
-  state.pendingOffer = { instrument: "NPI-Q", patientLabel, offeredAt: now.toISOString() };
+  state.pendingOffer = { instrument: code, patientLabel, offeredAt: now.toISOString() };
   state.lastOfferedAt = now.toISOString();
   await store.commit();
-  return eligibility;
+  return result;
 }
 
 /**
@@ -86,9 +102,9 @@ export async function handleOfferReply(deps: QuestionnaireDeps, caregiver: strin
   const text = clean(reply);
   state.pendingOffer = undefined;
 
-  if (YES.test(text)) return startNpiq(deps, caregiver, offer.patientLabel);
+  if (YES.test(text) && deps.wordings[offer.instrument]) return start(deps, caregiver, offer.instrument, offer.patientLabel);
   if (NO.test(text)) {
-    state.declinedOffers = { ...state.declinedOffers, "NPI-Q": isoNow(deps) };
+    state.declinedOffers = { ...state.declinedOffers, [offer.instrument]: isoNow(deps) };
     await deps.store.commit();
     return ["No problem at all. We can do it another time."];
   }
@@ -96,47 +112,75 @@ export async function handleOfferReply(deps: QuestionnaireDeps, caregiver: strin
   return null;
 }
 
-// ---------------------------------------------------------------- prompts
+// ---------------------------------------------------------------- cues
 
-function currentItem(assessment: Assessment) {
-  return NPIQ_ITEMS[assessment.cursor.itemIndex]!;
+/** NPI-Q cue: 2+ different symptom domains reported in the past 7 days. */
+export function cueMet(store: Store, caregiver: string, now = new Date()): boolean {
+  const weekAgo = now.getTime() - 7 * DAY_MS;
+  const domains = new Set(
+    store
+      .recentRecords(caregiver, 24 * 7, 100)
+      .filter((r) => r.kind === "npi_observation" && Date.parse(r.reportedAt) >= weekAgo)
+      .map((r) => (r.kind === "npi_observation" ? r.domain : "")),
+  );
+  return domains.size >= CUE_MIN_DOMAINS;
 }
 
-export function promptText(wording: NpiqWording, assessment: Assessment): string {
-  const { itemIndex, part } = assessment.cursor;
-  const item = currentItem(assessment);
-  const { label, question } = wording.items[item.id];
-  if (part === "presence") {
-    return `${itemIndex + 1}/${NPIQ_ITEMS.length} — ${label}\n${question}\n\nReply YES or NO.`;
+/** ZBI cue: the caregiver described their own stress, or rated distress 4+, in the past 7 days. */
+export function stressCueMet(store: Store, caregiver: string, now = new Date()): boolean {
+  const weekAgo = now.getTime() - 7 * DAY_MS;
+  const recent = (at: string) => Date.parse(at) >= weekAgo;
+  const stressNote = store
+    .recentNotes(caregiver, 24 * 7)
+    .some((n) => n.topic === "caregiver_wellbeing" && recent(n.reportedAt));
+  const highDistress = store
+    .recentRecords(caregiver, 24 * 7, 100)
+    .some((r) => r.kind === "npi_observation" && recent(r.reportedAt) && (r.distress ?? 0) >= CUE_HIGH_DISTRESS);
+  return stressNote || highDistress;
+}
+
+const CUES: Record<InstrumentCode, { met: typeof cueMet; why: string }> = {
+  "NPI-Q": { met: cueMet, why: "several different behavior changes reported this week" },
+  ZBI: { met: stressCueMet, why: "the caregiver has described their own stress or strain" },
+};
+
+/** The instrument whose cue is met and that can be offered now, if any. */
+export function cuedInstrument(store: Store, caregiver: string, wordings: Wordings, now = new Date()): Instrument | null {
+  const state = store.caregiver(caregiver);
+  if (state.pendingOffer || (state.lastOfferedAt && now.getTime() - Date.parse(state.lastOfferedAt) < DAY_MS)) return null;
+  // ZBI first: a caregiver who says they're struggling should be asked about themselves.
+  for (const instrument of [INSTRUMENTS.ZBI, INSTRUMENTS["NPI-Q"]]) {
+    if (!wordings[instrument.code]) continue;
+    if (eligibility(store, caregiver, instrument.code, now).ok && CUES[instrument.code].met(store, caregiver, now)) {
+      return instrument;
+    }
   }
-  const [prompt, options, reply] =
-    part === "severity"
-      ? [wording.severityPrompt, wording.severityOptions, "Reply 1, 2, or 3."]
-      : [wording.distressPrompt, wording.distressOptions, "Reply a number from 0 to 5."];
-  const lines = Object.entries(options).map(([k, v]) => `${k} = ${v}`);
-  return `${label}: ${prompt}\n${lines.join("\n")}\n\n${reply}`;
-}
-
-function intro(wording: NpiqWording, patientLabel: string): string {
-  return [
-    `Great, thank you. This is the NPI-Q, a standard check-in care teams use. The questions are about ${patientLabel}; where it says "the patient," that means ${patientLabel}.`,
-    wording.instructions,
-    `There are ${NPIQ_ITEMS.length} questions. If you answer YES, I'll also ask how severe it is and how much it distresses you.`,
-    "Reply SKIP to skip a question, PAUSE anytime to pause, and RESUME to continue.",
-  ].join("\n\n");
+  return null;
 }
 
 // ---------------------------------------------------------------- session
 
-export async function startNpiq(deps: QuestionnaireDeps, caregiver: string, patientLabel: string): Promise<string[]> {
+export function promptText(wordings: Wordings, assessment: Assessment): string {
+  return instrumentOf(assessment).prompt(wordings, assessment.cursor.itemIndex, assessment.cursor.part);
+}
+
+export async function start(
+  deps: QuestionnaireDeps,
+  caregiver: string,
+  code: InstrumentCode,
+  patientLabel: string,
+): Promise<string[]> {
+  const instrument = INSTRUMENTS[code];
+  const wording = deps.wordings[code];
+  if (!wording) throw new Error(`${code} wording not loaded`);
   const at = isoNow(deps);
   const assessment = await deps.store.addAssessment({
     id: `asmt_${randomUUID().slice(0, 8)}`,
     kind: "assessment",
-    instrument: "NPI-Q",
-    instrumentVersion: deps.wording.version,
+    instrument: code,
+    instrumentVersion: wording.version,
     administrationMode: "imessage_verbatim",
-    recallPeriod: "past month",
+    recallPeriod: instrument.recallPeriod,
     respondent: caregiver,
     respondentRole: "caregiver",
     patientLabel,
@@ -145,7 +189,7 @@ export async function startNpiq(deps: QuestionnaireDeps, caregiver: string, pati
     updatedAt: at,
     completedAt: null,
     responses: [],
-    cursor: { itemIndex: 0, part: "presence" },
+    cursor: { itemIndex: 0, part: instrument.firstPart },
     retries: 0,
     scores: null,
     source: "caregiver_imessage",
@@ -154,8 +198,12 @@ export async function startNpiq(deps: QuestionnaireDeps, caregiver: string, pati
   state.activeAssessmentId = assessment.id;
   state.patientLabel = patientLabel;
   await deps.store.commit();
-  return [intro(deps.wording, patientLabel), promptText(deps.wording, assessment)];
+  return [instrument.intro(deps.wordings, patientLabel), promptText(deps.wordings, assessment)];
 }
+
+/** Starts the NPI-Q (kept for tests and callers that only use the NPI-Q). */
+export const startNpiq = (deps: QuestionnaireDeps, caregiver: string, patientLabel: string) =>
+  start(deps, caregiver, "NPI-Q", patientLabel);
 
 /** The caregiver's active assessment if it's currently in progress. */
 export function inProgress(store: Store, caregiver: string): Assessment | undefined {
@@ -186,21 +234,21 @@ export async function resume(deps: QuestionnaireDeps, caregiver: string): Promis
   a.retries = 0;
   a.updatedAt = isoNow(deps);
   await deps.store.commit();
-  return ["Welcome back. Picking up where we left off.", promptText(deps.wording, a)];
+  return ["Welcome back. Picking up where we left off.", promptText(deps.wordings, a)];
 }
 
 function record(
   deps: QuestionnaireDeps,
   a: Assessment,
-  part: NpiqPart,
+  part: Part,
   questionText: string,
   rawReply: string | null,
   value: number | null,
-  status: NpiqResponse["status"],
-  interpretedBy: NpiqResponse["interpretedBy"],
+  status: ItemResponse["status"],
+  interpretedBy: ItemResponse["interpretedBy"],
 ) {
   a.responses.push({
-    itemId: currentItem(a).id,
+    itemId: instrumentOf(a).itemIds[a.cursor.itemIndex]!,
     part,
     questionText,
     rawReply,
@@ -212,27 +260,22 @@ function record(
 }
 
 /** Moves the cursor after the current prompt; returns true when finished. */
-function advance(deps: QuestionnaireDeps, a: Assessment, presenceYes: boolean): boolean {
+function advance(deps: QuestionnaireDeps, a: Assessment, last: ItemResponse): boolean {
+  const instrument = instrumentOf(a);
   a.retries = 0;
-  const { part } = a.cursor;
-  if (part === "presence" && presenceYes) {
-    a.cursor.part = "severity";
+  const next = instrument.nextPart(a.cursor.part, last.value, last.status);
+  if (next) {
+    a.cursor.part = next;
     return false;
   }
-  if (part === "severity") {
-    a.cursor.part = "distress";
-    return false;
+  for (const part of instrument.skippedParts(a.cursor.part)) {
+    record(deps, a, part, "", null, null, "not_asked", "system");
   }
-  if (part === "presence") {
-    // Not present / unknown / skipped: severity and distress aren't asked.
-    record(deps, a, "severity", "", null, null, "not_asked", "system");
-    record(deps, a, "distress", "", null, null, "not_asked", "system");
-  }
-  a.cursor = { itemIndex: a.cursor.itemIndex + 1, part: "presence" };
-  return a.cursor.itemIndex >= NPIQ_ITEMS.length;
+  a.cursor = { itemIndex: a.cursor.itemIndex + 1, part: instrument.firstPart };
+  return a.cursor.itemIndex >= instrument.itemIds.length;
 }
 
-function describe(part: NpiqPart, parsed: Parsed): string {
+function describe(part: Part, parsed: Parsed): string {
   if (parsed.kind !== "answer") return "";
   if (part === "presence") return parsed.value === 1 ? "Yes" : "No";
   return String(parsed.value);
@@ -250,9 +293,9 @@ export async function handleQuestionnaireReply(deps: QuestionnaireDeps, caregive
   }
 
   const part = a.cursor.part;
-  const questionText = promptText(deps.wording, a);
+  const questionText = promptText(deps.wordings, a);
   let parsed = parseAnswer(part, text);
-  let interpretedBy: NpiqResponse["interpretedBy"] = "rule";
+  let interpretedBy: ItemResponse["interpretedBy"] = "rule";
   let clarification: string | null = null;
 
   if (parsed.kind === "unclear" && deps.interpret) {
@@ -267,12 +310,9 @@ export async function handleQuestionnaireReply(deps: QuestionnaireDeps, caregive
   }
 
   const messages: string[] = [];
-  let presenceYes = false;
-
   switch (parsed.kind) {
     case "answer":
       record(deps, a, part, questionText, text, parsed.value, "valid", interpretedBy);
-      presenceYes = part === "presence" && parsed.value === 1;
       if (interpretedBy === "llm") messages.push(`Got it: ${describe(part, parsed)}.`);
       break;
     case "unknown":
@@ -294,19 +334,20 @@ export async function handleQuestionnaireReply(deps: QuestionnaireDeps, caregive
       break;
   }
 
-  const done = advance(deps, a, presenceYes);
+  const done = advance(deps, a, a.responses[a.responses.length - 1]!);
   a.updatedAt = isoNow(deps);
   if (!done) {
     await deps.store.commit();
-    messages.push(promptText(deps.wording, a));
+    messages.push(promptText(deps.wordings, a));
     return [messages.join("\n\n")];
   }
   return [...(messages.length ? [messages.join("\n\n")] : []), ...(await finish(deps, caregiver, a))];
 }
 
 async function finish(deps: QuestionnaireDeps, caregiver: string, a: Assessment): Promise<string[]> {
-  a.scores = scoreNpiq(a.responses);
-  a.status = a.scores.complete ? "completed" : "incomplete";
+  const instrument = instrumentOf(a);
+  a.scores = instrument.score(a.responses);
+  a.status = instrument.isComplete(a.scores) ? "completed" : "incomplete";
   a.completedAt = isoNow(deps);
   const state = deps.store.caregiver(caregiver);
   state.activeAssessmentId = undefined;
@@ -314,17 +355,15 @@ async function finish(deps: QuestionnaireDeps, caregiver: string, a: Assessment)
   await deps.store.appendTurn(
     caregiver,
     "assistant",
-    `[Lucidity completed an NPI-Q check-in with the caregiver (${a.status}). Results are saved for the care team.]`,
+    `[Lucidity completed a ${instrument.name} check-in with the caregiver (${a.status}). Results are saved for the care team.]`,
   );
 
-  const messages = [
-    `Thank you, that's the whole check-in. It's saved and will be shared with ${a.patientLabel}'s care team.`,
-  ];
+  const messages = [instrument.thanks(a.patientLabel)];
   if (state.scoreConsent === undefined) {
     state.awaitingScoreConsentFor = a.id;
     messages.push("Would you like to see your results, now and after future check-ins? Reply YES or NO.");
   } else if (state.scoreConsent) {
-    messages.push(resultsSummary(deps.wording, a));
+    messages.push(resultsSummary(deps.wordings, a));
   }
   await deps.store.commit();
   return messages;
@@ -342,7 +381,7 @@ export async function handleScoreConsent(deps: QuestionnaireDeps, caregiver: str
   if (YES.test(text)) {
     state.scoreConsent = true;
     await deps.store.commit();
-    return [resultsSummary(deps.wording, a)];
+    return [resultsSummary(deps.wordings, a)];
   }
   if (NO.test(text)) {
     state.scoreConsent = false;
@@ -353,62 +392,50 @@ export async function handleScoreConsent(deps: QuestionnaireDeps, caregiver: str
   return null;
 }
 
-export function resultsSummary(wording: NpiqWording, a: Assessment): string {
-  const scores = a.scores ?? scoreNpiq(a.responses);
-  const lines = [`Your NPI-Q results for ${a.patientLabel} (past month):`];
-  const present = scores.domains.filter((d) => d.present);
-  if (present.length === 0) lines.push("No symptoms were reported as present.");
-  for (const d of present) {
-    const fmt = (v: number | null, max: number) => (v === null ? "not answered" : `${v} of ${max}`);
-    lines.push(`• ${wording.items[d.itemId].label}: severity ${fmt(d.severity, 3)}, distress ${fmt(d.distress, 5)}`);
-  }
-  if (scores.complete) {
-    lines.push(`Total severity: ${scores.severityTotal} of 36`, `Total distress: ${scores.distressTotal} of 60`);
-  } else {
-    lines.push("Some answers were skipped or unsure, so totals aren't calculated.");
-  }
-  lines.push("These are for the care team to review, not a diagnosis.");
-  return lines.join("\n");
+export function resultsSummary(wordings: Wordings, a: Assessment): string {
+  const instrument = instrumentOf(a);
+  return instrument.summary(wordings, a.patientLabel, a.scores ?? instrument.score(a.responses));
 }
 
-/** Short summary for the AI's context (scores only if the caregiver consented). */
-export function assessmentContext(store: Store, caregiver: string, state: CaregiverState, now = new Date()): string {
+/** Check-in status for the AI's context (scores only if the caregiver consented). */
+export function assessmentContext(
+  store: Store,
+  caregiver: string,
+  state: CaregiverState,
+  now: Date,
+  wordings: Wordings,
+): string {
   const lines: string[] = [];
   const active = store.assessment(state.activeAssessmentId);
-  if (active?.status === "paused") lines.push("- An NPI-Q check-in is paused. The caregiver can reply RESUME to continue.");
-  const last = store.latestAssessment(caregiver, "NPI-Q");
-  if (last?.completedAt) {
-    const scores = last.scores;
-    const detail =
-      state.scoreConsent && scores
-        ? `, symptoms present: ${scores.symptomsPresent}${scores.complete ? `, total severity ${scores.severityTotal}/36, total distress ${scores.distressTotal}/60` : " (incomplete)"}`
-        : " (results not shared with the caregiver)";
-    lines.push(`- Last NPI-Q: ${last.completedAt.slice(0, 10)} (${last.status}${detail}).`);
+  if (active?.status === "paused") {
+    lines.push(`- A ${INSTRUMENTS[active.instrument].name} check-in is paused. The caregiver can reply RESUME to continue.`);
   }
-  const eligibility = npiqEligibility(store, caregiver, now);
-  if (!eligibility.ok) {
-    lines.push(`- NPI-Q check-in: do not offer. ${eligibility.reason}`);
-  } else if (state.pendingOffer || (state.lastOfferedAt && now.getTime() - Date.parse(state.lastOfferedAt) < DAY_MS)) {
-    lines.push("- NPI-Q check-in: already offered today; don't offer again.");
-  } else if (cueMet(store, caregiver, now)) {
+  const instruments = availableInstruments(wordings);
+  for (const instrument of instruments) {
+    const last = store.latestAssessment(caregiver, instrument.code);
+    if (!last?.completedAt) continue;
+    const detail =
+      state.scoreConsent && last.scores
+        ? `, ${instrument.contextResult(last.scores)}`
+        : " (results not shared with the caregiver)";
+    lines.push(`- Last ${instrument.name}: ${last.completedAt.slice(0, 10)} (${last.status}${detail}).`);
+  }
+
+  const cued = cuedInstrument(store, caregiver, wordings, now);
+  if (state.pendingOffer || (state.lastOfferedAt && now.getTime() - Date.parse(state.lastOfferedAt) < DAY_MS)) {
+    lines.push("- A check-in was already offered today; don't offer another.");
+  } else if (cued) {
     lines.push(
-      "- NPI-Q check-in: CUE MET (several different behavior changes reported this week). Offer it in this reply: call offer_questionnaire and invite them, unless the caregiver is in distress or raising a safety concern.",
+      `- CUE MET for the ${cued.name} (${CUES[cued.code].why}). Offer it in this reply: call offer_questionnaire with instrument "${cued.code}" and invite them, unless the caregiver is raising a safety concern.`,
     );
-  } else {
-    lines.push("- NPI-Q check-in: may be offered if the caregiver asks for a fuller check-in or describes an ongoing pattern.");
+  }
+  for (const instrument of instruments) {
+    const e = eligibility(store, caregiver, instrument.code, now);
+    lines.push(
+      e.ok
+        ? `- ${instrument.code} (${instrument.name}, about ${instrument.about}): may be offered if a cue fits.`
+        : `- ${instrument.code}: do not offer. ${e.reason}`,
+    );
   }
   return lines.join("\n");
-}
-
-/** Code-level cue: 2+ different NPI-Q domains reported in the past 7 days. */
-export const CUE_MIN_DOMAINS = 2;
-export function cueMet(store: Store, caregiver: string, now = new Date()): boolean {
-  const weekAgo = now.getTime() - 7 * DAY_MS;
-  const domains = new Set(
-    store
-      .recentRecords(caregiver, 24 * 7, 100)
-      .filter((r) => r.kind === "npi_observation" && Date.parse(r.reportedAt) >= weekAgo)
-      .map((r) => (r.kind === "npi_observation" ? r.domain : "")),
-  );
-  return domains.size >= CUE_MIN_DOMAINS;
 }

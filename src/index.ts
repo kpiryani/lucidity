@@ -3,7 +3,9 @@ import { imessage } from "@spectrum-ts/imessage";
 import { runAgent } from "./agent.ts";
 import { Debouncer } from "./debounce.ts";
 import { interpretWithLlm } from "./answers.ts";
+import type { Wordings } from "./instruments/index.ts";
 import { loadNpiqWording } from "./instruments/npiq.ts";
+import { loadZbiWording } from "./instruments/zbi.ts";
 import { loadLlmConfig } from "./llm.ts";
 import {
   handleOfferReply,
@@ -52,19 +54,20 @@ console.log(
 const AI_FAILURE_REPLY =
   "Sorry, I'm having trouble replying right now. Your message is saved, and you can keep texting. If anything is urgent, call 911 or your doctor.";
 
-// Verbatim questionnaire wording lives in a git-ignored local file.
-const npiqWording = await loadNpiqWording();
+// Verbatim questionnaire wording lives in git-ignored local files.
+const wordings: Wordings = { "NPI-Q": await loadNpiqWording(), ZBI: await loadZbiWording() };
+const enabled = (Object.keys(wordings) as Array<keyof Wordings>).filter((k) => wordings[k]);
 console.log(
-  npiqWording
-    ? "[lucidity] NPI-Q check-ins enabled."
-    : "[lucidity] NPI-Q check-ins disabled (data/instruments/npiq.local.json not found).",
+  enabled.length
+    ? `[lucidity] Check-ins enabled: ${enabled.join(", ")}.`
+    : "[lucidity] Check-ins disabled (no data/instruments/*.local.json found).",
 );
 
 function questionnaireDeps(from: string): QuestionnaireDeps | null {
-  if (!npiqWording) return null;
+  if (!enabled.length) return null;
   return {
     store,
-    wording: npiqWording,
+    wordings,
     interpret: llm ? (part, questionText, reply) => interpretWithLlm(llm, from, part, questionText, reply) : undefined,
   };
 }
@@ -176,7 +179,7 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
         {
           store,
           llm,
-          questionnairesAvailable: !!npiqWording,
+          wordings,
           onStep: (step) => console.log("[lucidity.step]", JSON.stringify(step)),
           onEscalate: async (caregiver, reason, quote) => {
             if (safetyHandled) return false; // rules already sent guidance for this turn

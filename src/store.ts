@@ -10,7 +10,10 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { NpiqPart, NpiqResponse, NpiqScores } from "./instruments/npiq.ts";
+import type { Scores } from "./instruments/index.ts";
+import type { InstrumentCode, ItemResponse, Part } from "./instruments/types.ts";
+
+export type { InstrumentCode };
 
 export const NPI_DOMAINS = [
   "delusions",
@@ -93,8 +96,6 @@ export interface Alert {
   at: string;
 }
 
-export type InstrumentCode = "NPI-Q";
-
 /** One administration of a standardized questionnaire (assessment). */
 export interface Assessment {
   id: string;
@@ -102,7 +103,7 @@ export interface Assessment {
   instrument: InstrumentCode;
   instrumentVersion: string;
   administrationMode: "imessage_verbatim";
-  recallPeriod: "past month";
+  recallPeriod: string;
   respondent: string; // caregiver address
   respondentRole: "caregiver";
   patientLabel: string; // e.g. "Dad", as the caregiver refers to them
@@ -110,12 +111,12 @@ export interface Assessment {
   startedAt: string;
   updatedAt: string;
   completedAt: string | null;
-  responses: NpiqResponse[];
+  responses: ItemResponse[];
   /** Where the questionnaire is up to. */
-  cursor: { itemIndex: number; part: NpiqPart };
+  cursor: { itemIndex: number; part: Part };
   /** Unclear replies to the current prompt so far. */
   retries: number;
-  scores: NpiqScores | null;
+  scores: Scores | null;
   source: "caregiver_imessage";
 }
 
@@ -335,6 +336,12 @@ export class Store {
     return [...this.data.observations.filter(recent), ...this.data.lucidityEpisodes.filter(recent)]
       .sort((a, b) => a.reportedAt.localeCompare(b.reportedAt))
       .slice(-limit);
+  }
+
+  /** This caregiver's recent general notes, oldest first. */
+  recentNotes(caregiver: string, withinHours = 48): GeneralNote[] {
+    const cutoff = Date.now() - withinHours * 3_600_000;
+    return this.data.notes.filter((n) => n.caregiver === caregiver && Date.parse(n.reportedAt) >= cutoff);
   }
 
   /** Read-only snapshot, for tests and debugging. */

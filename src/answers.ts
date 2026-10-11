@@ -6,7 +6,7 @@
 
 import { generateText, tool } from "ai";
 import { z } from "zod";
-import type { NpiqPart } from "./instruments/npiq.ts";
+import { PART_RANGE, type Part } from "./instruments/types.ts";
 import { sessionHeaders, type LlmConfig } from "./llm.ts";
 
 export type Parsed =
@@ -29,10 +29,19 @@ const NO = /^(n|no|nope|nah|na|not really|no he doesn't|no she doesn't|none|neve
 const UNKNOWN = /^(idk|i don't know|dont know|don't know|not sure|unsure|i'm not sure|im not sure|no idea|can't say|cant say|n a|na idk)$/;
 const SKIP = /^(skip|skip it|skip this|pass|next)$/;
 
+// ZBI scale words (checked before numbers). "never" here means 0, not "no".
+const FREQUENCY_WORDS: Array<[RegExp, number]> = [
+  [/^(never|not at all|not really|no)$/, 0],
+  [/^(rarely|hardly ever|seldom|once in a while)$/, 1],
+  [/^(sometimes|occasionally|now and then|some)$/, 2],
+  [/^(quite frequently|frequently|often|quite often|a lot)$/, 3],
+  [/^(nearly always|almost always|always|all the time|constantly)$/, 4],
+];
+
 const NUMBER_WORDS: Record<string, number> = { zero: 0, one: 1, two: 2, three: 3, four: 4, five: 5 };
 
 /** Deterministic parse; returns "unclear" when rules can't decide. */
-export function parseAnswer(part: NpiqPart, reply: string): Parsed {
+export function parseAnswer(part: Part, reply: string): Parsed {
   const text = normalize(reply);
   if (!text) return { kind: "unclear" };
   if (SKIP.test(text)) return { kind: "skip" };
@@ -44,7 +53,12 @@ export function parseAnswer(part: NpiqPart, reply: string): Parsed {
     return { kind: "unclear" };
   }
 
-  const [min, max] = part === "severity" ? [1, 3] : [0, 5];
+  if (part === "frequency") {
+    const word = FREQUENCY_WORDS.find(([re]) => re.test(text));
+    if (word) return { kind: "answer", value: word[1] };
+  }
+
+  const [min, max] = PART_RANGE[part];
   // A lone number (digit or word), optionally with filler like "maybe a 2".
   const numbers = [...text.matchAll(/\b([0-9]|zero|one|two|three|four|five)\b/g)].map((m) =>
     m[1]! in NUMBER_WORDS ? NUMBER_WORDS[m[1]!]! : Number(m[1]),
@@ -64,9 +78,11 @@ export interface Interpretation {
   clarification: string | null;
 }
 
-const PART_GUIDE: Record<NpiqPart, string> = {
+const PART_GUIDE: Record<Part, string> = {
   presence: 'Allowed answers: "yes" (the symptom has been present in the last month), "no", or "unknown" (the caregiver says they don\'t know).',
   severity: "Allowed answers: 1 = mild, 2 = moderate, 3 = severe (how it affects the patient), or \"unknown\".",
+  frequency:
+    'Allowed answers: 0 = never, 1 = rarely, 2 = sometimes, 3 = quite frequently, 4 = nearly always, or "unknown".',
   distress:
     "Allowed answers: 0 = not distressing at all, 1 = minimal, 2 = mild, 3 = moderate, 4 = severe, 5 = extreme (how much it distresses the caregiver), or \"unknown\".",
 };
@@ -78,7 +94,7 @@ const PART_GUIDE: Record<NpiqPart, string> = {
 export async function interpretWithLlm(
   llm: LlmConfig,
   caregiver: string,
-  part: NpiqPart,
+  part: Part,
   questionText: string,
   reply: string,
 ): Promise<Interpretation> {
@@ -118,7 +134,7 @@ export async function interpretWithLlm(
   return result;
 }
 
-function toParsed(part: NpiqPart, answer: "yes" | "no" | "unknown" | number | null): Parsed {
+function toParsed(part: Part, answer: "yes" | "no" | "unknown" | number | null): Parsed {
   if (answer === null || answer === undefined) return { kind: "unclear" };
   if (answer === "unknown") return { kind: "unknown" };
   if (part === "presence") {
@@ -127,6 +143,6 @@ function toParsed(part: NpiqPart, answer: "yes" | "no" | "unknown" | number | nu
     return { kind: "unclear" };
   }
   if (typeof answer !== "number") return { kind: "unclear" };
-  const [min, max] = part === "severity" ? [1, 3] : [0, 5];
+  const [min, max] = PART_RANGE[part];
   return answer >= min && answer <= max ? { kind: "answer", value: answer } : { kind: "unclear" };
 }

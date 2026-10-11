@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseAnswer } from "./answers.ts";
-import { NPIQ_ITEMS, scoreNpiq, type NpiqWording } from "./instruments/npiq.ts";
+import { NPIQ_ITEMS, scoreNpiq, type NpiqScores, type NpiqWording } from "./instruments/npiq.ts";
+import { ZBI_ITEM_IDS, type ZbiScores, type ZbiWording } from "./instruments/zbi.ts";
+import type { Assessment } from "./store.ts";
 import {
   handleOfferReply,
   handleQuestionnaireReply,
@@ -14,6 +16,8 @@ import {
   startNpiq,
   assessmentContext,
   cueMet,
+  start,
+  stressCueMet,
   type QuestionnaireDeps,
 } from "./questionnaire.ts";
 import { Store } from "./store.ts";
@@ -34,7 +38,17 @@ const wording: NpiqWording = {
 };
 
 const C = "+15550000001";
-const deps = (store: Store, interpret?: QuestionnaireDeps["interpret"]): QuestionnaireDeps => ({ store, wording, interpret });
+const zbiWording: ZbiWording = {
+  instrument: "ZBI",
+  version: "test",
+  notice: "test",
+  instructions: "ZBI INSTRUCTIONS",
+  scale: { "0": "NEVER", "1": "RARELY", "2": "SOMETIMES", "3": "QUITE FREQUENTLY", "4": "NEARLY ALWAYS" },
+  items: Object.fromEntries(ZBI_ITEM_IDS.map((id) => [id, { question: `ZBI QUESTION ${id}?` }])),
+};
+const wordings = { "NPI-Q": wording, ZBI: zbiWording };
+const deps = (store: Store, interpret?: QuestionnaireDeps["interpret"]): QuestionnaireDeps => ({ store, wordings, interpret });
+const npi = (a: Assessment) => a.scores as NpiqScores | null;
 
 async function started() {
   const store = new Store(null);
@@ -72,10 +86,10 @@ test("all NO: complete, every domain absent, totals 0", async () => {
   const last = await answerAll(d, Array(12).fill("no"));
   const a = store.snapshot().assessments[0]!;
   assert.equal(a.status, "completed");
-  assert.equal(a.scores?.severityTotal, 0);
-  assert.equal(a.scores?.distressTotal, 0);
-  assert.equal(a.scores?.symptomsPresent, 0);
-  assert.ok(a.scores?.domains.every((x) => x.present === false && x.severity === 0 && x.distress === 0));
+  assert.equal(npi(a)?.severityTotal, 0);
+  assert.equal(npi(a)?.distressTotal, 0);
+  assert.equal(npi(a)?.symptomsPresent, 0);
+  assert.ok(npi(a)?.domains.every((x) => x.present === false && x.severity === 0 && x.distress === 0));
   assert.match(last.join("\n"), /Would you like to see your results/);
 });
 
@@ -83,7 +97,7 @@ test("YES branches to severity then distress; separate totals", async () => {
   const { store, d } = await started();
   // Item 1 yes (sev 2, dis 3), item 2 yes (sev 1, dis 4), rest no.
   await answerAll(d, ["yes", "2", "3", "yes", "1", "4", ...Array(10).fill("no")]);
-  const scores = store.snapshot().assessments[0]!.scores!;
+  const scores = npi(store.snapshot().assessments[0]!)!;
   assert.equal(scores.complete, true);
   assert.equal(scores.severityTotal, 3);
   assert.equal(scores.distressTotal, 7);
@@ -105,9 +119,9 @@ test("unknown and skipped stay missing; no fabricated totals", async () => {
   await answerAll(d, ["idk", "skip", ...Array(10).fill("no")]);
   const a = store.snapshot().assessments[0]!;
   assert.equal(a.status, "incomplete");
-  assert.equal(a.scores?.severityTotal, null);
-  assert.equal(a.scores?.distressTotal, null);
-  assert.deepEqual(a.scores?.missingItemIds, ["NPIQ-01", "NPIQ-02"]);
+  assert.equal(npi(a)?.severityTotal, null);
+  assert.equal(npi(a)?.distressTotal, null);
+  assert.deepEqual(npi(a)?.missingItemIds, ["NPIQ-01", "NPIQ-02"]);
   const first = a.responses.find((r) => r.itemId === "NPIQ-01" && r.part === "presence")!;
   assert.equal(first.status, "unknown");
   assert.equal(first.value, null);
@@ -235,8 +249,66 @@ test("cue: two different symptoms this week tells the AI to offer, once a day", 
   assert.equal(cueMet(store, C), false);
   await obs("delusions");
   assert.equal(cueMet(store, C), true);
-  assert.match(assessmentContext(store, C, store.caregiver(C)), /CUE MET/);
+  assert.match(assessmentContext(store, C, store.caregiver(C), new Date(), wordings), /CUE MET for the NPI-Q/);
   await recordOffer(store, C, "Dad");
   store.caregiver(C).pendingOffer = undefined;
-  assert.match(assessmentContext(store, C, store.caregiver(C)), /already offered today/);
+  assert.match(assessmentContext(store, C, store.caregiver(C), new Date(), wordings), /already offered today/);
+});
+
+// --- ZBI (items 1–12) -------------------------------------------------------
+
+test("ZBI: frequency words and numbers parse; never means 0", () => {
+  assert.deepEqual(parseAnswer("frequency", "never"), { kind: "answer", value: 0 });
+  assert.deepEqual(parseAnswer("frequency", "Sometimes"), { kind: "answer", value: 2 });
+  assert.deepEqual(parseAnswer("frequency", "quite frequently"), { kind: "answer", value: 3 });
+  assert.deepEqual(parseAnswer("frequency", "4"), { kind: "answer", value: 4 });
+  assert.deepEqual(parseAnswer("frequency", "5"), { kind: "unclear" });
+});
+
+test("ZBI: one prompt per item, total 0–48 when complete", async () => {
+  const store = new Store(null);
+  const d = deps(store);
+  const [intro, first] = await start(d, C, "ZBI", "Dad");
+  assert.match(intro!, /about you/);
+  assert.match(intro!, /PAUSE anytime to pause, and RESUME to continue/);
+  assert.match(first!, /^1\/12\nZBI QUESTION ZBI-01\?/);
+  const replies = ["0", "1", "2", "3", "4", "never", "rarely", "sometimes", "often", "nearly always", "2", "2"];
+  let last: string[] = [];
+  for (const r of replies) last = await handleQuestionnaireReply(d, C, r);
+  const a = store.snapshot().assessments[0]!;
+  const scores = a.scores as ZbiScores;
+  assert.equal(a.instrument, "ZBI");
+  assert.equal(a.status, "completed");
+  assert.equal(scores.total, 0 + 1 + 2 + 3 + 4 + 0 + 1 + 2 + 3 + 4 + 2 + 2);
+  assert.equal(a.responses.filter((r) => r.status === "not_asked").length, 0);
+  assert.match(last.join("\n"), /caring for|feeling/);
+});
+
+test("ZBI: an unsure answer leaves the total uncalculated", async () => {
+  const store = new Store(null);
+  const d = deps(store);
+  await start(d, C, "ZBI", "Dad");
+  for (const r of ["idk", ...Array(11).fill("1")]) await handleQuestionnaireReply(d, C, r);
+  const a = store.snapshot().assessments[0]!;
+  assert.equal(a.status, "incomplete");
+  assert.equal((a.scores as ZbiScores).total, null);
+  await handleScoreConsent(d, C, "yes").then((m) => assert.match(m![0]!, /total isn't calculated/));
+});
+
+test("ZBI cue: caregiver stress note this week; ZBI is offered before the NPI-Q", async () => {
+  const store = new Store(null);
+  assert.equal(stressCueMet(store, C), false);
+  await store.addNote({ caregiver: C, topic: "caregiver_wellbeing", summary: "Exhausted", quote: "I'm exhausted", observedPeriod: null });
+  assert.equal(stressCueMet(store, C), true);
+  for (const domain of ["agitation_aggression", "delusions"] as const) {
+    await store.addObservation({ caregiver: C, domain, severity: null, distress: null, quote: "q", observedPeriod: null });
+  }
+  assert.match(assessmentContext(store, C, store.caregiver(C), new Date(), wordings), /CUE MET for the ZBI/);
+});
+
+test("ZBI offer: YES starts the ZBI", async () => {
+  const store = new Store(null);
+  await recordOffer(store, C, "Dad", new Date(), "ZBI");
+  const out = (await handleOfferReply(deps(store), C, "yes"))!;
+  assert.match(out.join("\n"), /ZBI QUESTION ZBI-01\?/);
 });

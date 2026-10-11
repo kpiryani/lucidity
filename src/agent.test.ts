@@ -410,7 +410,7 @@ test("the first step requires a tool call, and a skipped tool call falls back in
 
 test("an invitation without the offer tool still records the offer", async () => {
   const store = new Store(null);
-  const d = { ...deps(store, [noRecord(), textStep("Want to do a short 12-question check-in? Reply YES or NO.")]), questionnairesAvailable: true };
+  const d = { ...deps(store, [noRecord(), textStep("Want to do a short 12-question check-in? Reply YES or NO.")]), wordings: { "NPI-Q": {} as never } };
   await runAgent(d, "+15550000001", "Dad was up pacing again");
   assert.equal(store.caregiver("+15550000001").pendingOffer?.patientLabel, "Dad");
 });
