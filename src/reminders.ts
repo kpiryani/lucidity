@@ -5,7 +5,7 @@
 // due through Spectrum. Times are always confirmed back in the caregiver's
 // local time, formatted by code (not the model).
 //
-// Rules (LUCIDITY_CARE_REQUIREMENTS NOTIFY-03, LUCIDITY_CONNECT_EMERGENCIES EM6):
+// Rules (see docs/CONTEXT.md, "The rules everything follows"):
 // - STOP silences reminders; START resumes them.
 // - An active emergency holds reminders for a while.
 // - A reminder the caregiver asked for at a specific time counts as consent,

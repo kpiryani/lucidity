@@ -1,7 +1,7 @@
 // Per-caregiver memory and structured records, persisted to a local JSON file.
 // Phase 3 replaces this with Postgres; the shape mirrors the tables we'll need.
 //
-// Rules borrowed from LUCIDITY_CONNECT*.md (used as benchmarks):
+// Rules (see docs/CONTEXT.md, "The rules everything follows"):
 // - Unknown stays `null`; it is never coerced to "no" or 0.
 // - Every record keeps the caregiver's own words, when it was reported, and
 //   the period it describes.
