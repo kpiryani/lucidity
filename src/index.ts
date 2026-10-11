@@ -2,7 +2,22 @@ import { Spectrum, type Message, type Space } from "spectrum-ts";
 import { imessage } from "@spectrum-ts/imessage";
 import { runAgent } from "./agent.ts";
 import { Debouncer } from "./debounce.ts";
+import { interpretWithLlm } from "./answers.ts";
+import type { Wordings } from "./instruments/index.ts";
+import { loadNpiqWording } from "./instruments/npiq.ts";
+import { loadZbiWording } from "./instruments/zbi.ts";
 import { loadLlmConfig } from "./llm.ts";
+import {
+  handleOfferReply,
+  handleQuestionnaireReply,
+  handleScoreConsent,
+  inProgress,
+  isResume,
+  pause,
+  paused,
+  resume,
+  type QuestionnaireDeps,
+} from "./questionnaire.ts";
 import { Store, type Alert } from "./store.ts";
 import { AI_ESCALATION_REPLY, triage, triageReply } from "./triage.ts";
 // Spectrum bridges a single agent loop to many messaging interfaces.
@@ -39,8 +54,65 @@ console.log(
 const AI_FAILURE_REPLY =
   "Sorry, I'm having trouble replying right now. Your message is saved, and you can keep texting. If anything is urgent, call 911 or your doctor.";
 
+// Verbatim questionnaire wording lives in git-ignored local files.
+const wordings: Wordings = { "NPI-Q": await loadNpiqWording(), ZBI: await loadZbiWording() };
+const enabled = (Object.keys(wordings) as Array<keyof Wordings>).filter((k) => wordings[k]);
+console.log(
+  enabled.length
+    ? `[lucidity] Check-ins enabled: ${enabled.join(", ")}.`
+    : "[lucidity] Check-ins disabled (no data/instruments/*.local.json found).",
+);
+
+function questionnaireDeps(from: string): QuestionnaireDeps | null {
+  if (!enabled.length) return null;
+  return {
+    store,
+    wordings,
+    interpret: llm ? (part, questionText, reply) => interpretWithLlm(llm, from, part, questionText, reply) : undefined,
+  };
+}
+
+async function sendAll(space: Space, messages: string[]): Promise<void> {
+  for (const m of messages) await space.send(m);
+}
+
+/**
+ * Routes a message to questionnaire mode when a check-in, offer, or results
+ * question is pending. Returns true if it was handled here (not by the AI).
+ */
+async function routeQuestionnaire(space: Space, from: string, text: string): Promise<boolean> {
+  const q = questionnaireDeps(from);
+  if (!q) return false;
+  const state = store.caregiver(from);
+
+  if (inProgress(store, from)) {
+    await space.responding(async () => sendAll(space, await handleQuestionnaireReply(q, from, text)));
+    return true;
+  }
+  if (paused(store, from) && isResume(text)) {
+    await sendAll(space, (await resume(q, from)) ?? []);
+    return true;
+  }
+  if (state.awaitingScoreConsentFor) {
+    const messages = await handleScoreConsent(q, from, text);
+    if (messages) {
+      await sendAll(space, messages);
+      return true;
+    }
+  }
+  if (state.pendingOffer) {
+    const messages = await handleOfferReply(q, from, text);
+    if (messages) {
+      await space.responding(async () => sendAll(space, messages));
+      return true;
+    }
+  }
+  return false;
+}
+
 const STOP_WORDS = /^(stop|stopall|unsubscribe|cancel|end|quit)$/i;
-const START_WORDS = /^(start|unstop|resume)$/i;
+// RESUME is reserved for resuming a paused check-in.
+const START_WORDS = /^(start|unstop)$/i;
 
 // Until the dashboard exists, alerts are stored, logged, and, if configured,
 // texted to the care team. Returns whether a human was actually notified.
@@ -107,6 +179,7 @@ async function handleTurn(from: string, items: Inbound[]): Promise<void> {
         {
           store,
           llm,
+          wordings,
           onStep: (step) => console.log("[lucidity.step]", JSON.stringify(step)),
           onEscalate: async (caregiver, reason, quote) => {
             if (safetyHandled) return false; // rules already sent guidance for this turn
@@ -181,10 +254,17 @@ for await (const [space, message] of app.messages) {
         text,
       });
       if (notified) await space.send("I've also alerted your care team.");
+      // An emergency interrupts any check-in; offers are dropped.
+      store.caregiver(from).pendingOffer = undefined;
+      if (await pause(store, from)) {
+        await space.send("I've paused your check-in. Reply RESUME whenever you're ready.");
+      }
     }
 
     // STOP / START are handled by code, never by the model.
     if (STOP_WORDS.test(text.trim())) {
+      await pause(store, from);
+      store.caregiver(from).pendingOffer = undefined;
       await store.setOptedOut(from, true);
       await space.send(
         "You're unsubscribed and won't get check-ins from Lucidity. Text START anytime to come back. In an emergency, call 911.",
@@ -200,6 +280,9 @@ for await (const [space, message] of app.messages) {
       if (!result) await space.send("You're currently unsubscribed. Text START if you'd like to talk with Lucidity again.");
       continue;
     }
+
+    // Check-in answers are handled immediately by code, not batched for the AI.
+    if (!result && (await routeQuestionnaire(space, from, text))) continue;
 
     batcher.push(from, { space, message, text, safetyReply });
   } catch (err) {

@@ -15,6 +15,8 @@ import { ToolChoiceViolationError, generateText, stepCountIs, tool, type ModelMe
 import { z } from "zod";
 import { sessionHeaders, type LlmConfig } from "./llm.ts";
 import { SYSTEM_PROMPT, contextBlock } from "./prompt.ts";
+import type { Wordings } from "./instruments/index.ts";
+import { assessmentContext, cuedInstrument, recordOffer } from "./questionnaire.ts";
 import { GENERAL_TOPICS, NPI_DOMAINS, type Store } from "./store.ts";
 
 const MAX_STEPS = 4;
@@ -33,6 +35,8 @@ export interface AgentDeps {
   timeoutMs?: number;
   /** Per-step diagnostics (tools called, timing, tokens). */
   onStep?: (info: StepInfo) => void;
+  /** Installed questionnaire wording; check-ins can only be offered for these. */
+  wordings?: Wordings;
 }
 
 export interface StepInfo {
@@ -115,6 +119,23 @@ function buildTools(deps: AgentDeps, caregiver: string, state: TurnState) {
   };
 
   return {
+    offer_questionnaire: tool({
+      description:
+        'Offer a standard check-in. "NPI-Q": 12 questions about the patient\'s behavior and mood over the past month. "ZBI": 12 questions about how caregiving has been affecting the caregiver. Call this, then ask in your reply whether they\'d like to do it, ending with "Reply YES or NO." Lucidity takes over and asks the questions if they say yes.',
+      inputSchema: z.object({
+        instrument: z.enum(["NPI-Q", "ZBI"]),
+        patient_label: z.string().min(1).describe('How the caregiver refers to the patient, e.g. "Dad", "Mom", "my husband".'),
+        reason: z.string().min(1).describe("The cue that prompted the offer."),
+      }),
+      execute: async (input) => {
+        if (!deps.wordings?.[input.instrument]) return { ok: false, error: "That check-in isn't available. Don't offer it." };
+        const result = await recordOffer(store, caregiver, input.patient_label, deps.now?.() ?? new Date(), input.instrument);
+        return result.ok
+          ? { ok: true, note: "Offer recorded. In your reply, briefly invite them (12 short questions, about 5 minutes, shared with the care team) and end with 'Reply YES or NO.'" }
+          : { ok: false, error: `Don't offer it. ${result.reason}` };
+      },
+    }),
+
     no_record_needed: tool({
       description:
         "Call this ONLY when the latest message has nothing new to record: greetings, thanks, small talk, or a question to you. Anything about the person's behavior, mood, activities, abilities, health, routines, or the caregiver's own wellbeing must be recorded with another tool instead.",
@@ -293,7 +314,11 @@ export async function runAgent(
   const messages: ModelMessage[] = history.map((turn) => ({ role: turn.role, content: turn.text }));
   messages.push({ role: "user", content: text });
 
-  const system = [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), options.note]
+  const hasCheckIns = !!(deps.wordings?.["NPI-Q"] || deps.wordings?.ZBI);
+  const checkIns = hasCheckIns
+    ? `# Check-ins\n${assessmentContext(deps.store, caregiver, deps.store.caregiver(caregiver), now, deps.wordings!)}`
+    : "# Check-ins\n- Not available; don't offer one.";
+  const system = [SYSTEM_PROMPT, contextBlock(now, deps.store.recentRecords(caregiver)), checkIns, options.note]
     .filter(Boolean)
     .join("\n\n");
   const tools = buildTools(deps, caregiver, state);
@@ -354,7 +379,38 @@ export async function runAgent(
   }
 
   const reply = result.text.trim() || null;
+
+  // Safety net: the model sometimes invites a check-in without calling
+  // offer_questionnaire. Record the offer so the caregiver's YES starts it.
+  const caregiverState = deps.store.caregiver(caregiver);
+  if (reply && hasCheckIns && invitesCheckIn(reply) && !caregiverState.pendingOffer) {
+    const label =
+      caregiverState.patientLabel ?? guessPatientLabel([...state.recentCaregiverText, reply]) ?? "your loved one";
+    const code = cuedInstrument(deps.store, caregiver, deps.wordings!, now)?.code ?? (deps.wordings?.["NPI-Q"] ? "NPI-Q" : "ZBI");
+    const offered = await recordOffer(deps.store, caregiver, label, now, code);
+    deps.onStep?.({ step: ++stepCount, ms: 0, finishReason: `offer-recorded:${offered.ok}`, tools: [], outputTokens: 0, reasoningChars: 0 });
+  }
+
   return { reply, escalated: state.escalated, toolCalls: toolNames(allSteps) };
+}
+
+/** True when a reply invites the caregiver to start a check-in. */
+export function invitesCheckIn(reply: string): boolean {
+  return /reply yes or no/i.test(reply) && /check-?\s?in|questionnaire|questions/i.test(reply);
+}
+
+const RELATIONS: Record<string, string> = {
+  dad: "Dad", father: "Dad", mom: "Mom", mother: "Mom", husband: "your husband", wife: "your wife",
+  grandpa: "Grandpa", grandfather: "Grandpa", grandma: "Grandma", grandmother: "Grandma",
+};
+
+/** How the caregiver refers to the patient ("Dad"), from their messages. */
+export function guessPatientLabel(texts: string[]): string | null {
+  for (const text of [...texts].reverse()) {
+    const match = text.toLowerCase().match(/\b(dad|father|mom|mother|husband|wife|grandpa|grandfather|grandma|grandmother)\b/);
+    if (match) return RELATIONS[match[1]!]!;
+  }
+  return null;
 }
 
 const WRITE_TOOLS = new Set([

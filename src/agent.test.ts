@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { MockLanguageModelV4 } from "ai/test";
-import { CLARIFY_REPLY, claimsSave, runAgent, type AgentDeps } from "./agent.ts";
+import { CLARIFY_REPLY, claimsSave, guessPatientLabel, invitesCheckIn, runAgent, type AgentDeps } from "./agent.ts";
 import { Store } from "./store.ts";
 
 const usage = {
@@ -406,4 +406,18 @@ test("the first step requires a tool call, and a skipped tool call falls back in
   assert.equal(calls[0]!.toolChoice?.type, "required");
   assert.notEqual(calls[1]!.toolChoice?.type, "required");
   assert.equal(result.reply, "Hi there!");
+});
+
+test("an invitation without the offer tool still records the offer", async () => {
+  const store = new Store(null);
+  const d = { ...deps(store, [noRecord(), textStep("Want to do a short 12-question check-in? Reply YES or NO.")]), wordings: { "NPI-Q": {} as never } };
+  await runAgent(d, "+15550000001", "Dad was up pacing again");
+  assert.equal(store.caregiver("+15550000001").pendingOffer?.patientLabel, "Dad");
+});
+
+test("check-in invitation and patient label detection", () => {
+  assert.ok(invitesCheckIn("There's a short check-in, about 5 minutes. Reply YES or NO."));
+  assert.ok(!invitesCheckIn("Did he calm down? Reply yes or no."));
+  assert.equal(guessPatientLabel(["my mom forgot my name"]), "Mom");
+  assert.equal(guessPatientLabel(["he was up all night"]), null);
 });
