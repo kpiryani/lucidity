@@ -16,6 +16,8 @@ import {
   startNpiq,
   assessmentContext,
   cueMet,
+  checkInReminderText,
+  handleCheckInReminderReply,
   start,
   stressCueMet,
   type QuestionnaireDeps,
@@ -311,4 +313,83 @@ test("ZBI offer: YES starts the ZBI", async () => {
   await recordOffer(store, C, "Dad", new Date(), "ZBI");
   const out = (await handleOfferReply(deps(store), C, "yes"))!;
   assert.match(out.join("\n"), /ZBI QUESTION ZBI-01\?/);
+});
+
+// --- recurring check-in reminders ---------------------------------------------
+
+const NOW = new Date("2026-10-11T19:00:00Z"); // Sun Oct 11, 3 PM New York
+const timed = (store: Store): QuestionnaireDeps => ({ store, wordings, now: () => NOW, timeZone: "America/New_York" });
+
+async function finishNpiq(d: QuestionnaireDeps, consent: "yes" | "no" | null = "yes") {
+  await start(d, C, "NPI-Q", "Dad");
+  let out: string[] = [];
+  for (const r of Array(12).fill("no")) out = await handleQuestionnaireReply(d, C, r);
+  if (consent) out = (await handleScoreConsent(d, C, consent))!;
+  return out;
+}
+
+test("first completed check-in asks once about a recurring reminder (after results consent)", async () => {
+  const store = new Store(null);
+  const d = timed(store);
+  const out = await finishNpiq(d);
+  assert.match(out.join("\n"), /Want me to remind you\? I'd text you on Sun, Nov 8 at 6:00 PM, then every 4 weeks\. Reply YES or NO\./);
+  assert.equal(store.caregiver(C).checkInReminderPrompt?.status, "asked");
+});
+
+test("YES creates an every-4-weeks NPI-Q reminder at 6 PM local", async () => {
+  const store = new Store(null);
+  const d = timed(store);
+  await finishNpiq(d);
+  const reply = (await handleCheckInReminderReply(d, C, "yes"))!;
+  assert.match(reply[0]!, /every 4 weeks, starting Sun, Nov 8 at 6:00 PM/);
+  const [r] = store.activeReminders(C);
+  assert.equal(r?.repeat, "interval");
+  assert.equal(r?.intervalDays, 28);
+  assert.equal(r?.dueAt, "2026-11-08T23:00:00.000Z"); // 6 PM EST
+  assert.deepEqual(r?.checkIn, { instrument: "NPI-Q", patientLabel: "Dad" });
+});
+
+test("NO doesn't create a reminder, and it isn't asked again after a second check-in", async () => {
+  const store = new Store(null);
+  const d = timed(store);
+  await finishNpiq(d);
+  await handleCheckInReminderReply(d, C, "no");
+  assert.equal(store.activeReminders(C).length, 0);
+  // A later NPI-Q: no question this time.
+  const out = await finishNpiq(d, null);
+  assert.doesNotMatch(out.join("\n"), /Want me to remind you/);
+});
+
+test("ZBI first completion offers every 2 weeks", async () => {
+  const store = new Store(null);
+  const d = timed(store);
+  store.caregiver(C).scoreConsent = false;
+  await start(d, C, "ZBI", "Dad");
+  let out: string[] = [];
+  for (const r of Array(12).fill("1")) out = await handleQuestionnaireReply(d, C, r);
+  assert.match(out.join("\n"), /repeated every 2 weeks/);
+});
+
+test("when a check-in reminder fires it becomes an invitation; YES starts the check-in", async () => {
+  const store = new Store(null);
+  const d = timed(store);
+  await finishNpiq(d);
+  await handleCheckInReminderReply(d, C, "yes");
+  const [r] = store.activeReminders(C);
+  const due = new Date(r!.dueAt);
+  const text = await checkInReminderText(store, wordings, r!, due);
+  assert.match(text!, /time for Dad's NPI-Q check-in.*Reply YES or NO/);
+  const started = (await handleOfferReply({ ...d, now: () => due }, C, "yes"))!;
+  assert.match(started.join("\n"), /QUESTION NPIQ-01\?/);
+});
+
+test("a check-in reminder is skipped if the check-in was just done", async () => {
+  const store = new Store(null);
+  const d = timed(store);
+  await finishNpiq(d);
+  await handleCheckInReminderReply(d, C, "yes");
+  const [r] = store.activeReminders(C);
+  // Simulate an early retake: the reminder fires one day after a completed NPI-Q.
+  const early = new Date(NOW.getTime() + 86_400_000);
+  assert.equal(await checkInReminderText(store, wordings, r!, early), null);
 });

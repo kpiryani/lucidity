@@ -120,6 +120,29 @@ export interface Assessment {
   source: "caregiver_imessage";
 }
 
+export interface Reminder {
+  id: string;
+  kind: "reminder";
+  caregiver: string;
+  /** What to remind about, in plain words ("give Dad his meds"). */
+  what: string;
+  /** Next time to send (UTC ISO). */
+  dueAt: string;
+  timeZone: string;
+  repeat: "none" | "daily" | "weekly" | "interval";
+  /** For repeat "interval": days between reminders. */
+  intervalDays?: number;
+  /** Set when this reminder invites the caregiver to retake a check-in. */
+  checkIn?: { instrument: InstrumentCode; patientLabel: string };
+  status: "scheduled" | "sent" | "cancelled" | "failed";
+  /** The caregiver's words that asked for it. */
+  quote: string;
+  createdAt: string;
+  lastSentAt: string | null;
+  cancelledAt: string | null;
+  attempts: number;
+}
+
 export interface CaregiverState {
   address: string;
   optedOut: boolean;
@@ -138,6 +161,14 @@ export interface CaregiverState {
   declinedOffers?: Partial<Record<InstrumentCode, string>>;
   /** In-progress or paused assessment id. */
   activeAssessmentId?: string;
+  /** IANA time zone for reminders; defaults to LUCIDITY_TIMEZONE. */
+  timeZone?: string;
+  /** Last safety alert; routine reminders are held for a while after it. */
+  lastEmergencyAt?: string;
+  /** After a first check-in: offer a recurring reminder to retake it (queued, then asked). */
+  checkInReminderPrompt?: { instrument: InstrumentCode; patientLabel: string; status: "queued" | "asked" };
+  /** When we asked about a recurring check-in reminder, per instrument (asked once). */
+  checkInReminderAsked?: Partial<Record<InstrumentCode, string>>;
 }
 
 interface Data {
@@ -147,6 +178,7 @@ interface Data {
   notes: GeneralNote[];
   alerts: Alert[];
   assessments: Assessment[];
+  reminders: Reminder[];
 }
 
 const HISTORY_LIMIT = 40;
@@ -158,6 +190,7 @@ const emptyData = (): Data => ({
   notes: [],
   alerts: [],
   assessments: [],
+  reminders: [],
 });
 
 const now = () => new Date().toISOString();
@@ -336,6 +369,52 @@ export class Store {
     return [...this.data.observations.filter(recent), ...this.data.lucidityEpisodes.filter(recent)]
       .sort((a, b) => a.reportedAt.localeCompare(b.reportedAt))
       .slice(-limit);
+  }
+
+  async addReminder(input: Omit<Reminder, "id" | "kind" | "status" | "createdAt" | "lastSentAt" | "cancelledAt" | "attempts">): Promise<Reminder> {
+    const reminder: Reminder = {
+      id: `rem_${randomUUID().slice(0, 8)}`,
+      kind: "reminder",
+      status: "scheduled",
+      createdAt: now(),
+      lastSentAt: null,
+      cancelledAt: null,
+      attempts: 0,
+      ...input,
+    };
+    this.data.reminders.push(reminder);
+    await this.save();
+    return reminder;
+  }
+
+  /** Scheduled reminders for a caregiver, soonest first. */
+  activeReminders(caregiver: string): Reminder[] {
+    return this.data.reminders
+      .filter((r) => r.caregiver === caregiver && r.status === "scheduled")
+      .sort((a, b) => a.dueAt.localeCompare(b.dueAt));
+  }
+
+  dueReminders(at: Date): Reminder[] {
+    return this.data.reminders.filter((r) => r.status === "scheduled" && Date.parse(r.dueAt) <= at.getTime());
+  }
+
+  /** Moves a scheduled reminder to a new time, keeping its repeat and purpose. */
+  async rescheduleReminder(caregiver: string, id: string, dueAt: string): Promise<Reminder | null> {
+    const r = this.data.reminders.find((x) => x.id === id && x.caregiver === caregiver && x.status === "scheduled");
+    if (!r) return null;
+    r.dueAt = dueAt;
+    r.attempts = 0;
+    await this.save();
+    return r;
+  }
+
+  async cancelReminder(caregiver: string, id: string): Promise<Reminder | null> {
+    const r = this.data.reminders.find((x) => x.id === id && x.caregiver === caregiver && x.status === "scheduled");
+    if (!r) return null;
+    r.status = "cancelled";
+    r.cancelledAt = now();
+    await this.save();
+    return r;
   }
 
   /** This caregiver's recent general notes, oldest first. */
