@@ -358,7 +358,7 @@ for await (const [space, message] of app.messages) {
       });
       if (notified) await space.send("I've also alerted your care team.");
       // An emergency interrupts any check-in, drops offers, and holds
-      // routine reminders for a while (LUCIDITY_CONNECT_EMERGENCIES EM6).
+      // routine reminders for a while (docs/CONTEXT.md, Safety rules).
       store.caregiver(from).pendingOffer = undefined;
       store.caregiver(from).lastEmergencyAt = new Date().toISOString();
       await store.commit();

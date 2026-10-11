@@ -82,7 +82,7 @@ test("clear answers parse by rule; don't-know is unknown, never no", () => {
   assert.deepEqual(parseAnswer("distress", "between 2 and 3"), { kind: "unclear" });
 });
 
-// --- scoring (LUCIDITY_CONNECT.md §3.3, §8) -------------------------------
+// --- scoring (NPI-Q rules in docs/CONTEXT.md) -------------------------------
 
 test("all NO: complete, every domain absent, totals 0", async () => {
   const { store, d } = await started();
