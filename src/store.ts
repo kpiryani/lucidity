@@ -129,7 +129,11 @@ export interface Reminder {
   /** Next time to send (UTC ISO). */
   dueAt: string;
   timeZone: string;
-  repeat: "none" | "daily" | "weekly";
+  repeat: "none" | "daily" | "weekly" | "interval";
+  /** For repeat "interval": days between reminders. */
+  intervalDays?: number;
+  /** Set when this reminder invites the caregiver to retake a check-in. */
+  checkIn?: { instrument: InstrumentCode; patientLabel: string };
   status: "scheduled" | "sent" | "cancelled" | "failed";
   /** The caregiver's words that asked for it. */
   quote: string;
@@ -161,6 +165,10 @@ export interface CaregiverState {
   timeZone?: string;
   /** Last safety alert; routine reminders are held for a while after it. */
   lastEmergencyAt?: string;
+  /** After a first check-in: offer a recurring reminder to retake it (queued, then asked). */
+  checkInReminderPrompt?: { instrument: InstrumentCode; patientLabel: string; status: "queued" | "asked" };
+  /** When we asked about a recurring check-in reminder, per instrument (asked once). */
+  checkInReminderAsked?: Partial<Record<InstrumentCode, string>>;
 }
 
 interface Data {
@@ -388,6 +396,16 @@ export class Store {
 
   dueReminders(at: Date): Reminder[] {
     return this.data.reminders.filter((r) => r.status === "scheduled" && Date.parse(r.dueAt) <= at.getTime());
+  }
+
+  /** Moves a scheduled reminder to a new time, keeping its repeat and purpose. */
+  async rescheduleReminder(caregiver: string, id: string, dueAt: string): Promise<Reminder | null> {
+    const r = this.data.reminders.find((x) => x.id === id && x.caregiver === caregiver && x.status === "scheduled");
+    if (!r) return null;
+    r.dueAt = dueAt;
+    r.attempts = 0;
+    await this.save();
+    return r;
   }
 
   async cancelReminder(caregiver: string, id: string): Promise<Reminder | null> {

@@ -11,7 +11,8 @@ import type { Interpretation } from "./answers.ts";
 import { parseAnswer, type Parsed } from "./answers.ts";
 import { INSTRUMENTS, availableInstruments, type Instrument, type Wordings } from "./instruments/index.ts";
 import type { InstrumentCode, ItemResponse, Part } from "./instruments/types.ts";
-import type { Assessment, CaregiverState, Store } from "./store.ts";
+import { DEFAULT_TIMEZONE, cadence, formatLocal, localDayAt } from "./reminders.ts";
+import type { Assessment, CaregiverState, Reminder, Store } from "./store.ts";
 
 /** After a declined offer, wait this long before offering it again. */
 export const OFFER_DECLINE_COOLDOWN_DAYS = 7;
@@ -27,7 +28,12 @@ export interface QuestionnaireDeps {
   /** LLM fallback for replies rules can't parse (optional). */
   interpret?: (part: Part, questionText: string, reply: string) => Promise<Interpretation>;
   now?: () => Date;
+  /** Caregiver time zone for check-in reminders (default America/New_York). */
+  timeZone?: string;
 }
+
+/** Local hour for recurring check-in reminders. */
+export const CHECKIN_REMINDER_HOUR = 18;
 
 const DAY_MS = 86_400_000;
 const isoNow = (deps: { now?: () => Date }) => (deps.now?.() ?? new Date()).toISOString();
@@ -346,6 +352,9 @@ export async function handleQuestionnaireReply(deps: QuestionnaireDeps, caregive
 
 async function finish(deps: QuestionnaireDeps, caregiver: string, a: Assessment): Promise<string[]> {
   const instrument = instrumentOf(a);
+  const firstTime = !deps.store
+    .snapshot()
+    .assessments.some((x) => x.id !== a.id && x.respondent === caregiver && x.instrument === a.instrument && x.completedAt);
   a.scores = instrument.score(a.responses);
   a.status = instrument.isComplete(a.scores) ? "completed" : "incomplete";
   a.completedAt = isoNow(deps);
@@ -359,14 +368,95 @@ async function finish(deps: QuestionnaireDeps, caregiver: string, a: Assessment)
   );
 
   const messages = [instrument.thanks(a.patientLabel)];
+  // First time: offer a recurring reminder to retake it (asked once per instrument).
+  const hasReminder = deps.store.activeReminders(caregiver).some((r) => r.checkIn?.instrument === a.instrument);
+  if (firstTime && !state.checkInReminderAsked?.[a.instrument] && !hasReminder) {
+    state.checkInReminderPrompt = { instrument: a.instrument, patientLabel: a.patientLabel, status: "queued" };
+  }
   if (state.scoreConsent === undefined) {
     state.awaitingScoreConsentFor = a.id;
     messages.push("Would you like to see your results, now and after future check-ins? Reply YES or NO.");
-  } else if (state.scoreConsent) {
-    messages.push(resultsSummary(deps.wordings, a));
+  } else {
+    if (state.scoreConsent) messages.push(resultsSummary(deps.wordings, a));
+    askQueuedReminder(deps, caregiver, messages);
   }
   await deps.store.commit();
   return messages;
+}
+
+// ---------------------------------------------------------------- recurring check-in reminders
+
+const tz = (deps: QuestionnaireDeps) => deps.timeZone ?? DEFAULT_TIMEZONE;
+
+/** First reminder: `repeatDays` after today, at 6:00 PM local. */
+export function firstCheckInDue(deps: QuestionnaireDeps, code: InstrumentCode): Date {
+  return localDayAt(deps.now?.() ?? new Date(), INSTRUMENTS[code].repeatDays, CHECKIN_REMINDER_HOUR, 0, tz(deps));
+}
+
+/** Appends the recurring-reminder question if one is queued. */
+function askQueuedReminder(deps: QuestionnaireDeps, caregiver: string, messages: string[]): void {
+  const state = deps.store.caregiver(caregiver);
+  const prompt = state.checkInReminderPrompt;
+  if (prompt?.status !== "queued") return;
+  const instrument = INSTRUMENTS[prompt.instrument];
+  const due = firstCheckInDue(deps, prompt.instrument);
+  prompt.status = "asked";
+  state.checkInReminderAsked = { ...state.checkInReminderAsked, [prompt.instrument]: isoNow(deps) };
+  messages.push(
+    `One more thing: this check-in is most useful when it's repeated ${cadence(instrument.repeatDays)}. Want me to remind you? I'd text you on ${formatLocal(due, tz(deps))}, then ${cadence(instrument.repeatDays)}. Reply YES or NO.`,
+  );
+}
+
+/** Handles YES/NO to the recurring-reminder question; null if not a clear answer. */
+export async function handleCheckInReminderReply(deps: QuestionnaireDeps, caregiver: string, reply: string): Promise<string[] | null> {
+  const state = deps.store.caregiver(caregiver);
+  const prompt = state.checkInReminderPrompt;
+  if (prompt?.status !== "asked") return null;
+  const text = clean(reply);
+  state.checkInReminderPrompt = undefined;
+  if (YES.test(text)) {
+    const instrument = INSTRUMENTS[prompt.instrument];
+    const due = firstCheckInDue(deps, prompt.instrument);
+    await deps.store.addReminder({
+      caregiver,
+      what: `${prompt.patientLabel}'s ${instrument.name} check-in`,
+      dueAt: due.toISOString(),
+      timeZone: tz(deps),
+      repeat: "interval",
+      intervalDays: instrument.repeatDays,
+      checkIn: { instrument: prompt.instrument, patientLabel: prompt.patientLabel },
+      quote: text,
+    });
+    return [
+      `Done. I'll remind you ${cadence(instrument.repeatDays)}, starting ${formatLocal(due, tz(deps))}. You can ask me to change the time or cancel it anytime.`,
+    ];
+  }
+  await deps.store.commit();
+  if (NO.test(text)) return ["No problem. You can ask me for a reminder anytime."];
+  return null;
+}
+
+/**
+ * Text for a due check-in reminder: an invitation that records an offer so
+ * YES starts it. null skips this occurrence (e.g. they already did it early).
+ * undefined means it's not a check-in reminder (use the default text).
+ */
+export async function checkInReminderText(
+  store: Store,
+  wordings: Wordings,
+  r: Reminder,
+  now: Date,
+): Promise<string | null | undefined> {
+  if (!r.checkIn) return undefined;
+  const { instrument: code, patientLabel } = r.checkIn;
+  const instrument = INSTRUMENTS[code];
+  if (!wordings[code]) return `Reminder: it's time for ${patientLabel}'s ${instrument.name} check-in.`;
+  if (paused(store, r.caregiver)) return "Reminder: you have a check-in paused. Reply RESUME whenever you're ready.";
+  if (inProgress(store, r.caregiver)) return null;
+  const e = eligibility(store, r.caregiver, code, now);
+  if (!e.ok) return null; // done recently, or declined recently
+  await recordOffer(store, r.caregiver, patientLabel, now, code);
+  return `Reminder: it's time for ${patientLabel}'s ${instrument.name} check-in (12 short questions, about 5 minutes). Want to do it now? Reply YES or NO.`;
 }
 
 // ---------------------------------------------------------------- results
@@ -380,13 +470,17 @@ export async function handleScoreConsent(deps: QuestionnaireDeps, caregiver: str
   state.awaitingScoreConsentFor = undefined;
   if (YES.test(text)) {
     state.scoreConsent = true;
+    const messages = [resultsSummary(deps.wordings, a)];
+    askQueuedReminder(deps, caregiver, messages);
     await deps.store.commit();
-    return [resultsSummary(deps.wordings, a)];
+    return messages;
   }
   if (NO.test(text)) {
     state.scoreConsent = false;
+    const messages = ["Okay, I won't show results. They'll still be shared with the care team."];
+    askQueuedReminder(deps, caregiver, messages);
     await deps.store.commit();
-    return ["Okay, I won't show results. They'll still be shared with the care team."];
+    return messages;
   }
   await deps.store.commit();
   return null;

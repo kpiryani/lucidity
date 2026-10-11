@@ -8,6 +8,8 @@ import {
   deliverDue,
   describeReminder,
   formatLocal,
+  cadence,
+  rescheduledDue,
   resolveDue,
   zonedToUtc,
 } from "./reminders.ts";
@@ -210,4 +212,43 @@ test("a repeating reminder needs the caregiver to have said it repeats", async (
   const reminders = store.activeReminders(C);
   assert.equal(reminders.length, 1);
   assert.equal(reminders[0]!.repeat, "none");
+});
+
+test("interval reminders repeat every N days; cadence wording", async () => {
+  const store = new Store(null);
+  const r = await withReminder(store, { repeat: "interval", intervalDays: 28 });
+  const { send } = sender();
+  await deliverDue({ store, send, now: () => new Date("2026-10-12T00:00:10Z") });
+  assert.equal(formatLocal(new Date(r.dueAt), TZ), "Sun, Nov 8 at 8:00 PM");
+  assert.equal(cadence(28), "every 4 weeks");
+  assert.equal(cadence(14), "every 2 weeks");
+  assert.equal(cadence(10), "every 10 days");
+});
+
+test("compose can skip an occurrence without sending", async () => {
+  const store = new Store(null);
+  const r = await withReminder(store, { repeat: "interval", intervalDays: 28 });
+  const { sent, send } = sender();
+  await deliverDue({ store, send, compose: async () => null, now: () => new Date("2026-10-12T00:00:10Z") });
+  assert.equal(sent.length, 0);
+  assert.equal(r.status, "scheduled");
+  assert.equal(formatLocal(new Date(r.dueAt), TZ), "Sun, Nov 8 at 8:00 PM");
+});
+
+test("change_reminder_time keeps the repeat and check-in link", async () => {
+  const store = new Store(null);
+  const r = await withReminder(store, { repeat: "interval", intervalDays: 28, checkIn: { instrument: "NPI-Q", patientLabel: "Dad" } });
+  const moved = rescheduledDue(r, "09:00", NOW);
+  assert.ok(moved.ok);
+  await runAgent(
+    agentDeps(store, [
+      toolStep("change_reminder_time", { reminder_id: r.id, time: "09:00", caregiver_said: "reminder 9am instead" }),
+      textStep("Moved it to 9:00 AM."),
+    ]),
+    C,
+    "make the check-in reminder 9am instead",
+  );
+  assert.equal(r.repeat, "interval");
+  assert.ok(r.checkIn);
+  assert.equal(formatLocal(new Date(r.dueAt), TZ), "Mon, Oct 12 at 9:00 AM");
 });

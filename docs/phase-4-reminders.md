@@ -16,8 +16,20 @@ timer (every 20s) ─▶ due reminders ─▶ Spectrum sends "Reminder: …" ─
 - **Spectrum** sends messages without the caregiver texting first (`im.space.create` → `space.send`). Verified on our Photon plan on 2026-10-11. Lucidity reuses the latest conversation, or opens the DM after a restart.
 - **Scheduling is ours:** a 20-second timer in the bot (`startReminderLoop` in `src/reminders.ts`).
 - **Time zones:** `LUCIDITY_TIMEZONE` in `.env` (default `America/New_York`). The AI gives a local clock time; code does the conversion (daylight-saving safe) and formats the confirmation, so the time the caregiver reads is computed, not generated.
-- **Repeats:** `none`, `daily`, `weekly`. A repeat is only allowed if the caregiver's message says so ("every", "daily", "each night"…); otherwise it's one-time and the AI asks "just today, or every day?".
-- **Listing / changing / cancelling:** the AI sees scheduled reminders (with ids) in its context. "What reminders do I have?", "cancel the breakfast one", "make it 9pm" (cancels and replaces, never duplicates).
+- **Repeats:** `none`, `daily`, `weekly`, plus `interval` (every N days, used for check-in reminders). A repeat is only allowed if the caregiver's message says so ("every", "daily", "each night"…); otherwise it's one-time and the AI asks "just today, or every day?".
+- **Listing / changing / cancelling:** the AI sees scheduled reminders (with ids) in its context. "What reminders do I have?", "cancel the breakfast one", "make it 9pm" (`change_reminder_time` keeps the repeat), "make it every day" (cancels and replaces, never duplicates).
+
+## Recurring check-in reminders
+
+The **first time** a caregiver completes a check-in (NPI-Q or ZBI), Lucidity asks once, after the results question:
+
+> "One more thing: this check-in is most useful when it's repeated every 4 weeks. Want me to remind you? I'd text you on Sun, Nov 8 at 6:00 PM, then every 4 weeks. Reply YES or NO."
+
+- Cadence matches each questionnaire's repeat window: **NPI-Q every 4 weeks** (it covers the past month), **ZBI every 2 weeks**. First reminder at **6:00 PM local** on that day.
+- **YES** → a repeating reminder (`repeat: "interval"`, `intervalDays`, `checkIn: { instrument, patientLabel }`). **NO** → nothing; asked once per questionnaire, never again.
+- When it fires, it's an invitation, not just a note: "Reminder: it's time for Dad's NPI-Q check-in (12 short questions, about 5 minutes). Want to do it now? Reply YES or NO." It records an offer, so **YES starts the check-in** directly.
+- If the caregiver already did that check-in recently (or declined one recently), that occurrence is skipped silently and the next one is scheduled. If a check-in is paused, the reminder says to reply RESUME.
+- "Make my check-in reminder 9am instead" → `change_reminder_time` moves it and keeps the repeat and check-in link.
 
 ## Safety and consent rules
 
@@ -37,7 +49,7 @@ timer (every 20s) ─▶ due reminders ─▶ Spectrum sends "Reminder: …" ─
 
 ## Stored data (`data/lucidity.json` → `reminders`)
 
-`id`, `caregiver`, `what`, `dueAt` (UTC, next send), `timeZone`, `repeat`, `status` (`scheduled` / `sent` / `cancelled` / `failed`), `quote` (the caregiver's words), `createdAt`, `lastSentAt`, `cancelledAt`, `attempts`.
+`id`, `caregiver`, `what`, `dueAt` (UTC, next send), `timeZone`, `repeat`, `intervalDays`, `checkIn`, `status` (`scheduled` / `sent` / `cancelled` / `failed`), `quote` (the caregiver's words), `createdAt`, `lastSentAt`, `cancelledAt`, `attempts`.
 
 ## Files
 
@@ -61,3 +73,9 @@ Start the bot (`npm run dev`) and wait for `[lucidity] Reminders running (time z
 6. `cancel the meds reminder` → cancelled.
 7. Set one for 2 minutes out, text `STOP` → it is not sent; text `START` → it is sent on the next check.
 8. Check `data/lucidity.json` → `reminders`.
+
+**Recurring check-in reminder** (needs a first-ever check-in, so start clean: Ctrl+C, `rm data/lucidity.json`, `npm run dev`):
+1. Do an NPI-Q or ZBI check-in to the end (see `docs/phase-3-questionnaire.md`), answer the results question.
+2. Expect: "…repeated every 4 weeks. Want me to remind you? I'd text you on <date> at 6:00 PM…" → `yes` → "Done. I'll remind you every 4 weeks, starting …".
+3. `what reminders do I have?` → lists the check-in reminder. `make my check-in reminder 9am instead` → moved, still every 4 weeks.
+4. (Optional, to see it fire now) in `data/lucidity.json` with the bot stopped, set that reminder's `dueAt` to a minute from now and the NPI-Q's `completedAt` to more than 28 days ago, start the bot → the invitation arrives → `yes` starts the check-in.

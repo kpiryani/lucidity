@@ -8,6 +8,8 @@ import { loadNpiqWording } from "./instruments/npiq.ts";
 import { loadZbiWording } from "./instruments/zbi.ts";
 import { loadLlmConfig } from "./llm.ts";
 import {
+  checkInReminderText,
+  handleCheckInReminderReply,
   handleOfferReply,
   handleQuestionnaireReply,
   handleScoreConsent,
@@ -74,13 +76,6 @@ async function sendTo(caregiver: string, text: string): Promise<void> {
   await space.send(text);
 }
 
-const stopReminders = startReminderLoop({
-  store,
-  send: sendTo,
-  log: (message, data) => console.log(message, data === undefined ? "" : JSON.stringify(data)),
-});
-console.log(`[lucidity] Reminders running (time zone: ${TIMEZONE}).`);
-process.once("beforeExit", stopReminders);
 
 // Verbatim questionnaire wording lives in git-ignored local files.
 const wordings: Wordings = { "NPI-Q": await loadNpiqWording(), ZBI: await loadZbiWording() };
@@ -96,9 +91,19 @@ function questionnaireDeps(from: string): QuestionnaireDeps | null {
   return {
     store,
     wordings,
+    timeZone: TIMEZONE,
     interpret: llm ? (part, questionText, reply) => interpretWithLlm(llm, from, part, questionText, reply) : undefined,
   };
 }
+
+const stopReminders = startReminderLoop({
+  store,
+  send: sendTo,
+  compose: (reminder, now) => checkInReminderText(store, wordings, reminder, now),
+  log: (message, data) => console.log(message, data === undefined ? "" : JSON.stringify(data)),
+});
+console.log(`[lucidity] Reminders running (time zone: ${TIMEZONE}).`);
+process.once("beforeExit", stopReminders);
 
 async function sendAll(space: Space, messages: string[]): Promise<void> {
   for (const m of messages) await space.send(m);
@@ -123,6 +128,13 @@ async function routeQuestionnaire(space: Space, from: string, text: string): Pro
   }
   if (state.awaitingScoreConsentFor) {
     const messages = await handleScoreConsent(q, from, text);
+    if (messages) {
+      await sendAll(space, messages);
+      return true;
+    }
+  }
+  if (state.checkInReminderPrompt?.status === "asked") {
+    const messages = await handleCheckInReminderReply(q, from, text);
     if (messages) {
       await sendAll(space, messages);
       return true;

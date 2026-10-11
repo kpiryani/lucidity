@@ -95,7 +95,7 @@ export function localNowLabel(now: Date, timeZone: string): string {
 
 // ---------------------------------------------------------------- scheduling
 
-export type Repeat = "none" | "daily" | "weekly";
+export type Repeat = "none" | "daily" | "weekly" | "interval";
 
 export type ScheduleResult = { ok: true; dueAt: Date } | { ok: false; error: string };
 
@@ -134,9 +134,41 @@ export function addLocalDays(at: Date, days: number, timeZone: string): Date {
   );
 }
 
+/** Local date of `at` plus `days`, at hour:minute local time. */
+export function localDayAt(at: Date, days: number, hour: number, minute: number, timeZone: string): Date {
+  const p = partsIn(timeZone, at);
+  const d = new Date(Date.UTC(p.year, p.month - 1, p.day + days));
+  return zonedToUtc({ year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour, minute }, timeZone);
+}
+
+/**
+ * New due time for a reminder moved to `time` (HH:MM local): same day as its
+ * next occurrence if still ahead, otherwise the next day.
+ */
+export function rescheduledDue(r: Reminder, time: string, now: Date): ScheduleResult {
+  const p = partsIn(r.timeZone, new Date(r.dueAt));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const sameDay = resolveDue(time, `${p.year}-${pad(p.month)}-${pad(p.day)}`, r.timeZone, now);
+  return sameDay.ok ? sameDay : resolveDue(time, null, r.timeZone, now);
+}
+
+/** "every 4 weeks", "every 10 days", "every day". */
+export function cadence(days: number): string {
+  if (days === 1) return "every day";
+  if (days === 7) return "every week";
+  return days % 7 === 0 ? `every ${days / 7} weeks` : `every ${days} days`;
+}
+
+function stepDays(reminder: Reminder): number | null {
+  if (reminder.repeat === "daily") return 1;
+  if (reminder.repeat === "weekly") return 7;
+  if (reminder.repeat === "interval") return reminder.intervalDays ?? null;
+  return null;
+}
+
 export function nextOccurrence(reminder: Reminder, now: Date): Date | null {
-  if (reminder.repeat === "none") return null;
-  const step = reminder.repeat === "daily" ? 1 : 7;
+  const step = stepDays(reminder);
+  if (!step) return null;
   let due = addLocalDays(new Date(reminder.dueAt), step, reminder.timeZone);
   while (due.getTime() <= now.getTime()) due = addLocalDays(due, step, reminder.timeZone);
   return due;
@@ -149,7 +181,9 @@ export function describeReminder(r: Reminder): string {
       ? `every day at ${formatTime(at, r.timeZone)}`
       : r.repeat === "weekly"
         ? `every ${new Intl.DateTimeFormat("en-US", { timeZone: r.timeZone, weekday: "long" }).format(at)} at ${formatTime(at, r.timeZone)}`
-        : formatLocal(at, r.timeZone);
+        : r.repeat === "interval" && r.intervalDays
+          ? `${cadence(r.intervalDays)}, next ${formatLocal(at, r.timeZone)}`
+          : formatLocal(at, r.timeZone);
   return `"${r.what}", ${when}`;
 }
 
@@ -167,6 +201,18 @@ export interface DeliveryDeps {
   send: (caregiver: string, text: string) => Promise<void>;
   now?: () => Date;
   log?: (message: string, data?: unknown) => void;
+  /**
+   * Optional custom text for a reminder (e.g. a check-in invitation).
+   * Return null to skip this occurrence without sending, undefined for the default text.
+   */
+  compose?: (reminder: Reminder, now: Date) => Promise<string | null | undefined>;
+}
+
+function advanceAfter(r: Reminder, now: Date): Date | null {
+  const next = nextOccurrence(r, now);
+  if (next) r.dueAt = next.toISOString();
+  else r.status = "sent";
+  return next;
 }
 
 /** Sends every due reminder once. Returns how many were sent. */
@@ -182,7 +228,14 @@ export async function deliverDue(deps: DeliveryDeps): Promise<number> {
       continue; // EM6: hold routine reminders during an active emergency
     }
 
-    const text = reminderText(r, now);
+    const composed = deps.compose ? await deps.compose(r, now) : undefined;
+    if (composed === null) {
+      advanceAfter(r, now);
+      await deps.store.commit();
+      log("[lucidity.reminder] skipped", { id: r.id });
+      continue;
+    }
+    const text = composed ?? reminderText(r, now);
     try {
       await deps.send(r.caregiver, text);
     } catch (err) {
@@ -196,9 +249,7 @@ export async function deliverDue(deps: DeliveryDeps): Promise<number> {
     sent += 1;
     r.attempts = 0;
     r.lastSentAt = now.toISOString();
-    const next = nextOccurrence(r, now);
-    if (next) r.dueAt = next.toISOString();
-    else r.status = "sent";
+    const next = advanceAfter(r, now);
     await deps.store.appendTurn(r.caregiver, "assistant", text);
     log("[lucidity.reminder] sent", { id: r.id, next: next?.toISOString() ?? null });
   }

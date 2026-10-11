@@ -17,7 +17,7 @@ import { sessionHeaders, type LlmConfig } from "./llm.ts";
 import { SYSTEM_PROMPT, contextBlock } from "./prompt.ts";
 import type { Wordings } from "./instruments/index.ts";
 import { assessmentContext, cuedInstrument, recordOffer } from "./questionnaire.ts";
-import { DEFAULT_TIMEZONE, describeReminder, localNowLabel, resolveDue } from "./reminders.ts";
+import { DEFAULT_TIMEZONE, describeReminder, localNowLabel, rescheduledDue, resolveDue } from "./reminders.ts";
 import { GENERAL_TOPICS, NPI_DOMAINS, type Store } from "./store.ts";
 
 const MAX_STEPS = 4;
@@ -177,6 +177,27 @@ function buildTools(deps: AgentDeps, caregiver: string, state: TurnState) {
           scheduled: describeReminder(reminder),
           note: "Confirm it back using exactly the scheduled time above, so the caregiver can catch mistakes.",
         };
+      },
+    }),
+
+    change_reminder_time: tool({
+      description:
+        "Move an existing reminder to a different time of day, keeping how often it repeats and what it's for (use this instead of cancelling and re-creating).",
+      inputSchema: z.object({
+        reminder_id: z.string(),
+        time: z.string().describe("New local 24-hour time, e.g. 09:00."),
+        caregiver_said: caregiverSaid,
+      }),
+      execute: async (input) => {
+        if (!inLatest(input.caregiver_said)) return notInLatest(input.caregiver_said);
+        const existing = store.activeReminders(caregiver).find((r) => r.id === input.reminder_id);
+        if (!existing) return { ok: false, error: "No such scheduled reminder." };
+        const due = rescheduledDue(existing, input.time, deps.now?.() ?? new Date());
+        if (!due.ok) return { ok: false, error: due.error };
+        const r = await store.rescheduleReminder(caregiver, existing.id, due.dueAt.toISOString());
+        return r
+          ? { ok: true, scheduled: describeReminder(r), note: "Confirm using exactly the scheduled time above." }
+          : { ok: false, error: "No such scheduled reminder." };
       },
     }),
 
@@ -442,11 +463,13 @@ export async function runAgent(
   }
 
   // Safety net: never promise a reminder that wasn't actually scheduled.
-  if (claimsReminder(result.text) && !succeeded(allSteps, "set_reminder")) {
+  const scheduledOne = () => succeeded(allSteps, "set_reminder") || succeeded(allSteps, "change_reminder_time");
+  if (claimsReminder(result.text) && !scheduledOne()) {
     deps.onStep?.({ step: ++stepCount, ms: 0, finishReason: "retry:unscheduled-reminder", tools: [], outputTokens: 0, reasoningChars: 0 });
     result = await generate(UNSCHEDULED_REMINDER_NOTE);
     allSteps.push(...result.steps);
-    if (claimsReminder(result.text) && !succeeded(allSteps, "set_reminder")) {
+    const scheduledOne = () => succeeded(allSteps, "set_reminder") || succeeded(allSteps, "change_reminder_time");
+  if (claimsReminder(result.text) && !scheduledOne()) {
       return { reply: REMINDER_CLARIFY_REPLY, escalated: state.escalated, toolCalls: toolNames(allSteps) };
     }
   }
@@ -488,6 +511,7 @@ export function guessPatientLabel(texts: string[]): string | null {
 
 const WRITE_TOOLS = new Set([
   "set_reminder",
+  "change_reminder_time",
   "cancel_reminder",
   "log_npi_observation",
   "update_observation",
