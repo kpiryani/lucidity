@@ -218,6 +218,6 @@ export function compileProfile(store: Store, caregiver: string, now = new Date()
     questions.forEach((q, i) => lines.push(`${i + 1}. ${q.text}\n   Why: ${q.because}`));
   }
 
-  lines.push("", "Reply ASK 1, ASK <your question>, RECOMMEND <message>, or HELP.");
+  lines.push("", 'Reply "ask 1", "ask them: <question>", "tell them: <message>", or "help".');
   return lines.join("\n");
 }

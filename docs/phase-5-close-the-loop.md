@@ -12,7 +12,7 @@ Connect collects ──▶ Intelligence compiles ──▶ Care reviews and appr
 | Pillar | What was added | File |
 |---|---|---|
 | **Intelligence** | One-page profile compiled by code: NPI-Q changes between check-ins (per symptom + totals), ZBI items that rose, the caregiver's own words, lucid moments, safety alerts, and rule-based suggested questions (each with a "why") | `src/profile.ts` |
-| **Care** | Clinician commands from `CLINICIAN_PHONE`: `PROFILE`, `ASK 1` / `ASK <text>`, `RECOMMEND <text>`, `APPROVE`, `EDIT <text>`, `CANCEL`, `STATUS`, `HELP`. Plain commands, no model. Safety alerts and "new update" nudges go to the clinician | `src/care.ts` |
+| **Care** | Clinician texts from `CLINICIAN_PHONE`, in natural phrases (any capitalization): "profile" / "how is he doing?", "ask 1", "ask them: …", "tell them: …", "send it" / "looks good", "change it to …", "never mind", "any replies?", "help". Exact keywords (`PROFILE`, `ASK`, `RECOMMEND`, `APPROVE`, `EDIT`, `CANCEL`, `STATUS`) still work. Rule-based, no model. Safety alerts and "new update" nudges go to the clinician | `src/care.ts` |
 | **Connect** | Delivers the approved text exactly ("Question from Dad's care team: …" / "From Dad's care team: …"), saves the caregiver's reply linked to it (caregiver-reported, not verified), forwards it to the clinician | `src/care.ts`, `src/index.ts` |
 
 ## The rules
@@ -48,16 +48,18 @@ Caregiver phone = your phone. Clinician phone = teammate ("Simulated clinician")
 
 | # | Who | Text | Result |
 |---|---|---|---|
-| 1 | Caregiver | `dad is so anxious tonight. he keeps trying to get up and leave.` | Normal Lucidity reply; clinician gets "New update for Jonathan… Reply PROFILE." |
-| 2 | Clinician | `PROFILE` | The one-page profile (changes Sept → Oct, caregiver's words, suggested questions) |
-| 3 | Clinician | `ASK 1` | Draft: "Question from Dad's care team: Does Dad's anxiety tend to happen at a particular time of day…" |
-| 4 | Clinician | `APPROVE` | Caregiver receives it |
+| 1 | Caregiver | `dad is so anxious tonight. he keeps trying to get up and leave.` | Normal Lucidity reply; clinician gets "New update for Jonathan… Reply "profile" to review." |
+| 2 | Clinician | `how is he doing?` | The one-page profile (changes Sept → Oct, caregiver's words, suggested questions) |
+| 3 | Clinician | `ask 1` | Draft: "Question from Dad's care team: Does Dad's anxiety tend to happen at a particular time of day…" |
+| 4 | Clinician | `send it` | Caregiver receives it |
 | 5 | Caregiver | `usually right after dinner` | Lucidity thanks them; clinician gets "Caregiver replied…" |
-| 6 | Clinician | `RECOMMEND That sounds like a hard evening. One small change may help: dim the lights and lower the noise tonight. Want to try it? Reply YES, or skip.` | Draft shown with exact wording |
-| 7 | Clinician | `APPROVE` | Caregiver receives "From Dad's care team: That sounds like a hard evening…" |
-| 8 | Caregiver | `YES` | "Thank you. I've let Dad's care team know you'll try it."; clinician gets the reply |
+| 6 | Clinician | `tell them: That sounds like a hard evening. One small change may help: dim the lights and lower the noise tonight. Want to try it? Reply YES, or skip.` | Draft shown with exact wording |
+| 7 | Clinician | `looks good` | Caregiver receives "From Dad's care team: That sounds like a hard evening…" |
+| 8 | Caregiver | `yes` | "Thank you. I've let Dad's care team know you'll try it."; clinician gets the reply |
 | 9 | Caregiver | `he fell and hit his head` | Instant fixed 911 text; clinician gets "⚠ Lucidity EMERGENCY alert for Jonathan…" |
-| 10 | Clinician | `STATUS` | Messages sent and replies |
+| 10 | Clinician | `any replies?` | Messages sent and replies |
+
+Other phrases: "change it to: …" (edit the draft), "never mind" / "don't send it" (cancel), "help". Unrecognized text gets a short hint, never the AI.
 
 ## What's still simulated
 

@@ -31,13 +31,66 @@ const clock = (iso: string) =>
 const short = (s: string, n = 80) => (s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s);
 
 export const CLINICIAN_HELP = [
-  "Lucidity Care (Simulated clinician). Commands:",
-  "PROFILE: the patient's one-page profile",
-  "ASK 1: send suggested question 1 (ASK <text> for your own)",
-  "RECOMMEND <text>: send a recommendation",
-  "APPROVE / EDIT <text> / CANCEL: for the drafted message",
-  "STATUS: recent messages and replies",
+  "Lucidity Care (Simulated clinician). You can type naturally, e.g.:",
+  "• \"profile\" or \"how is he doing?\": the one-page profile",
+  "• \"ask 1\": send suggested question 1",
+  "• \"ask them: Does it start after dinner?\": your own question",
+  "• \"tell them: Dim the lights tonight.\": a recommendation",
+  "• \"send it\" / \"looks good\": approve the draft",
+  "• \"change it to …\": edit the draft",
+  "• \"never mind\": cancel the draft",
+  "• \"any replies?\": what was sent and how they replied",
 ].join("\n");
+
+export type ClinicianCommand = "HELP" | "PROFILE" | "STATUS" | "APPROVE" | "EDIT" | "CANCEL" | "ASK" | "RECOMMEND" | "UNKNOWN";
+
+// Natural phrasings for each command. The message text after a prefix keeps
+// the clinician's original wording and capitalization.
+const BODY_PREFIXES: Array<[ClinicianCommand, RegExp]> = [
+  ["EDIT", /^(?:edit|change (?:it|that|the draft) to|change to|make it|reword (?:it )?(?:to|as)|instead(?:,)? say|actually(?:,)? say|say instead)\s*:?\s+([\s\S]+)$/i],
+  [
+    "ASK",
+    /^(?:ask(?: them| the caregiver| caregiver| the family)?|send (?:a )?question|question)\s*:?\s+([\s\S]+)$/i,
+  ],
+  [
+    "RECOMMEND",
+    /^(?:recommend(?:ation)?|rec|suggest(?:ion)?|advise|tell(?: them| the caregiver| caregiver| the family)?|send (?:a )?(?:recommendation|message)|let them know)\s*:?\s+([\s\S]+)$/i,
+  ],
+];
+const EXACT: Array<[ClinicianCommand, RegExp]> = [
+  ["HELP", /^(help|\?|commands|menu|what can i do|options)$/i],
+  [
+    "PROFILE",
+    /^(profile|show (?:me )?(?:the )?profile|summary|report|overview|chart|show (?:me )?(?:the )?(?:summary|report|chart)|update|what'?s new|how(?:'s| is) (?:he|she|they|the patient|[a-z]+) doing)$/i,
+  ],
+  ["STATUS", /^(status|any replies|replies|what did they say|did they reply|history|sent)$/i],
+  [
+    "APPROVE",
+    /^(approve|approved|send|send it|send that|yes|y|yep|yeah|looks good|lgtm|ok|okay|ok send|go ahead|confirm|sounds good|good to go|perfect)$/i,
+  ],
+  ["CANCEL", /^(cancel|never ?mind|don'?t send(?: it)?|do not send|scrap (?:it|that)|discard|delete (?:it|that|the draft)|no|nope|no thanks)$/i],
+];
+
+/** Maps a clinician's text to a command and its message body. */
+export function parseClinicianCommand(raw: string): { command: ClinicianCommand; arg: string } {
+  const text = raw
+    .trim()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/^(?:please|pls|can you|could you)\s+/i, "");
+  // "ask 1", "send 1", "use #2", "question 3"
+  const numbered = /^(?:ask|send|use|question)?\s*#?\s*(\d)$/i.exec(text);
+  if (numbered) return { command: "ASK", arg: numbered[1]! };
+  for (const [command, re] of BODY_PREFIXES) {
+    const m = re.exec(text);
+    if (m) return { command, arg: m[1]!.trim() };
+  }
+  const bare = text.replace(/[.!?]+$/, "").trim();
+  for (const [command, re] of EXACT) if (re.test(bare) || (command === "HELP" && text === "?")) return { command, arg: "" };
+  return { command: "UNKNOWN", arg: "" };
+}
+
+/** Capitalizes the first letter of a drafted message. */
+const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** The exact text the caregiver will receive. */
 export function caregiverFacing(store: Store, m: CareMessage): string {
@@ -48,29 +101,28 @@ export function caregiverFacing(store: Store, m: CareMessage): string {
 }
 
 function preview(store: Store, m: CareMessage): string {
-  return `Draft ${m.type} for the caregiver:\n\n"${caregiverFacing(store, m)}"\n\nReply APPROVE to send, EDIT <new text>, or CANCEL.`;
+  return `Draft ${m.type} for the caregiver:\n\n"${caregiverFacing(store, m)}"\n\nSay "send it" to approve, "change it to …" to edit, or "never mind" to cancel.`;
 }
 
 /** Handles one message from the clinician; returns replies to the clinician. */
 export async function handleClinicianMessage(deps: CareDeps, raw: string): Promise<string[]> {
-  const text = raw.trim();
-  const [first = "", ...rest] = text.split(/\s+/);
-  const command = first.toUpperCase().replace(/[^A-Z?]/g, "");
-  const arg = rest.join(" ").trim();
+  const { command, arg } = parseClinicianCommand(raw);
   const { store } = deps;
   const caregiver = deps.currentCaregiver();
   const draft = store.careMessage(store.careDraftId);
 
-  if (command === "HELP" || command === "?") return [CLINICIAN_HELP];
+  if (command === "HELP") return [CLINICIAN_HELP];
 
   if (command === "APPROVE") {
-    if (!draft || draft.status !== "draft") return ["There's no draft to approve. Use ASK or RECOMMEND first."];
+    if (!draft || draft.status !== "draft") {
+      return ['There\'s nothing to send yet. Try "ask 1" or "tell them: <message>" first.'];
+    }
     return [await approve(deps, draft)];
   }
   if (command === "EDIT") {
     if (!draft || draft.status !== "draft") return ["There's no draft to edit."];
-    if (!arg) return ["Add the new text after EDIT, e.g. EDIT Dim the lights tonight."];
-    draft.text = arg;
+    if (!arg) return ['Add the new text, e.g. "change it to: Dim the lights tonight."'];
+    draft.text = sentence(arg);
     await store.commit();
     return [preview(store, draft)];
   }
@@ -98,12 +150,12 @@ export async function handleClinicianMessage(deps: CareDeps, raw: string): Promi
     ];
   }
 
-  if (command === "ASK" || command === "RECOMMEND" || command === "REC") {
-    if (!arg) return [command === "ASK" ? "Add a question or a number, e.g. ASK 1." : "Add the message, e.g. RECOMMEND Dim the lights tonight."];
-    let body = arg;
+  if (command === "ASK" || command === "RECOMMEND") {
+    if (!arg) return [command === "ASK" ? 'Add a question or a number, e.g. "ask 1".' : 'Add the message, e.g. "tell them: Dim the lights tonight."'];
+    let body = sentence(arg);
     if (command === "ASK" && /^\d+$/.test(arg)) {
       const picked = suggestedQuestions(store, caregiver, deps.now?.())[Number(arg) - 1];
-      if (!picked) return ["That number isn't in the suggested questions. Reply PROFILE to see them."];
+      if (!picked) return ['That number isn\'t in the suggested questions. Say "profile" to see them.'];
       body = picked.text;
     }
     if (draft?.status === "draft") draft.status = "cancelled"; // one draft at a time
@@ -112,7 +164,7 @@ export async function handleClinicianMessage(deps: CareDeps, raw: string): Promi
     return [preview(store, m)];
   }
 
-  return ["I didn't recognize that. Reply HELP for commands."];
+  return ['I didn\'t catch that. Say "help" to see what you can ask, e.g. "profile", "ask 1", or "tell them: …".'];
 }
 
 async function approve(deps: CareDeps, m: CareMessage): Promise<string> {
@@ -211,5 +263,5 @@ export async function nudgeClinician(deps: CareDeps, caregiver: string, what: st
   state.lastClinicianNudgeAt = now.toISOString();
   await deps.store.commit();
   const name = state.patientName ?? state.patientLabel ?? "the patient";
-  await notifyClinician(deps, `New update for ${name}: ${what}. Reply PROFILE to review.`);
+  await notifyClinician(deps, `New update for ${name}: ${what}. Reply "profile" to review.`);
 }

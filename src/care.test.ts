@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { CLINICIAN_HELP, captureCareReply, handleClinicianMessage, nudgeClinician, type CareDeps } from "./care.ts";
+import { CLINICIAN_HELP, captureCareReply, handleClinicianMessage, nudgeClinician, parseClinicianCommand, type CareDeps } from "./care.ts";
 import { NPIQ_ITEMS, scoreNpiq } from "./instruments/npiq.ts";
 import type { ItemResponse } from "./instruments/types.ts";
 import { ZBI_ITEM_IDS, scoreZbi } from "./instruments/zbi.ts";
@@ -133,7 +133,7 @@ test("EDIT changes the draft; CANCEL sends nothing", async () => {
   assert.match(edited[0]!, /Question from Dad's care team: Does the anxiety usually start before or after dinner\?/);
   assert.match((await handleClinicianMessage(deps, "cancel"))[0]!, /Nothing was sent/);
   assert.equal(sent.length, 0);
-  assert.match((await handleClinicianMessage(deps, "approve"))[0]!, /no draft/);
+  assert.match((await handleClinicianMessage(deps, "approve"))[0]!, /nothing to send/);
 });
 
 test("ASK 1 uses the first suggested question", async () => {
@@ -156,7 +156,7 @@ test("not sent when the caregiver opted out", async () => {
 test("unknown clinician text gets a hint, never the AI", async () => {
   const store = await jonathan();
   const { deps } = care(store);
-  assert.match((await handleClinicianMessage(deps, "how is he doing?"))[0]!, /Reply HELP/);
+  assert.match((await handleClinicianMessage(deps, "what about his meds?"))[0]!, /Say "help"/);
 });
 
 // --- Connect: caregiver replies -----------------------------------------------
@@ -191,7 +191,47 @@ test("clinician nudges are rate-limited to once an hour unless forced", async ()
   await nudgeClinician(deps, CG, "a behavior change");
   await nudgeClinician(deps, CG, "another change");
   assert.equal(sent.length, 1);
-  assert.match(sent[0]!.text, /New update for Jonathan: a behavior change\. Reply PROFILE/);
+  assert.match(sent[0]!.text, /New update for Jonathan: a behavior change\. Reply "profile"/);
   await nudgeClinician(deps, CG, "NPI-Q check-in completed", true);
   assert.equal(sent.length, 2);
+});
+
+// --- natural phrasing ---------------------------------------------------------
+
+test("natural phrases map to clinician commands, case-insensitive", () => {
+  const cases: Array<[string, string, string]> = [
+    ["profile", "PROFILE", ""],
+    ["Show me the profile", "PROFILE", ""],
+    ["how is he doing?", "PROFILE", ""],
+    ["How's Jonathan doing", "PROFILE", ""],
+    ["any replies?", "STATUS", ""],
+    ["send it", "APPROVE", ""],
+    ["Looks good!", "APPROVE", ""],
+    ["yes", "APPROVE", ""],
+    ["never mind", "CANCEL", ""],
+    ["don't send it", "CANCEL", ""],
+    ["ask 1", "ASK", "1"],
+    ["#2", "ASK", "2"],
+    ["ask them: Does it start after dinner?", "ASK", "Does it start after dinner?"],
+    ["please ask the caregiver Does it start after dinner?", "ASK", "Does it start after dinner?"],
+    ["tell them: Dim the lights tonight.", "RECOMMEND", "Dim the lights tonight."],
+    ["suggest a calm evening routine", "RECOMMEND", "a calm evening routine"],
+    ["RECOMMEND Dim the lights", "RECOMMEND", "Dim the lights"],
+    ["change it to: Dim the lights after dinner.", "EDIT", "Dim the lights after dinner."],
+    ["what can I do", "HELP", ""],
+    ["what about his meds?", "UNKNOWN", ""],
+  ];
+  for (const [text, command, arg] of cases) {
+    assert.deepEqual(parseClinicianCommand(text), { command, arg }, text);
+  }
+});
+
+test("a natural flow: tell them, change it, send it", async () => {
+  const store = await jonathan();
+  const { deps, sent } = care(store);
+  await handleClinicianMessage(deps, "tell them: dim the lights tonight");
+  const edited = await handleClinicianMessage(deps, "change it to: Dim the lights after dinner tonight. Want to try it? Reply YES, or skip.");
+  assert.match(edited[0]!, /Say "send it" to approve/);
+  await handleClinicianMessage(deps, "looks good");
+  assert.equal(sent[0]!.text, "From Dad's care team: Dim the lights after dinner tonight. Want to try it? Reply YES, or skip.");
 });
